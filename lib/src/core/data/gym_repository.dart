@@ -603,12 +603,59 @@ class GymRepository {
       request: {'id': gymId},
       run: () => _client
           .from('gyms')
-          .select('id, name, email, phone, address, timezone, currency_code')
+          .select(
+            'id, name, email, phone, address, timezone, currency_code, setup_completed_at',
+          )
           .eq('id', gymId)
           .maybeSingle(),
     );
     if (row == null) return null;
     return row;
+  }
+
+  Future<void> updateGymForSetup({
+    required String gymId,
+    String? phone,
+    String? currencyCode,
+  }) async {
+    final patch = <String, dynamic>{};
+    if (phone != null) patch['phone'] = phone;
+    if (currencyCode != null) patch['currency_code'] = currencyCode;
+    if (patch.isEmpty) return;
+
+    await _logApiCall(
+      action: 'gyms.update.setup',
+      request: {'id': gymId, ...patch},
+      run: () => _client.from('gyms').update(patch).eq('id', gymId),
+    );
+  }
+
+  Future<void> updateOwnerProfile({
+    required String fullName,
+    String? phone,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    if (userId == null) return;
+
+    await _logApiCall(
+      action: 'profiles.update.self',
+      request: {'id': userId, 'full_name': fullName, 'phone': phone},
+      run: () => _client.from('profiles').upsert({
+        'id': userId,
+        'full_name': fullName,
+        if (phone != null) 'phone': phone,
+      }),
+    );
+  }
+
+  Future<void> completeGymSetup(String gymId) async {
+    await _logApiCall(
+      action: 'gyms.update.setup_completed',
+      request: {'id': gymId},
+      run: () => _client.from('gyms').update({
+        'setup_completed_at': DateTime.now().toUtc().toIso8601String(),
+      }).eq('id', gymId),
+    );
   }
 
   Future<Map<String, dynamic>?> currentUserProfile() async {

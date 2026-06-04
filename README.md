@@ -27,6 +27,7 @@ This repository is separate from [Megylla](https://github.com/your-org/Megylla) 
    - `supabase/migrations/20260603180000_member_role_enum.sql` (adds `member` role — run first)
    - `supabase/migrations/20260603180100_member_accounts.sql` (member app login + RLS)
    - `supabase/migrations/20260603180200_fix_rls_recursion.sql` (fixes members list stack overflow)
+   - `supabase/migrations/20260604150000_gym_owner_setup.sql` (owner setup wizard flag)
    - Optional dev data: `supabase/seed.sql` (requires matching `auth.users` IDs)
 
 ## Project layout
@@ -54,6 +55,26 @@ This repository is separate from [Megylla](https://github.com/your-org/Megylla) 
 Members get `gym_roles.role = member` and are linked via `members.user_id`. RLS ensures:
 - Owners/staff see all members in their gym only.
 - Member app users see only their own profile, subscription, and attendance for that gym.
+
+## Gym owner onboarding (admin → owner app)
+
+**Platform admin** (Supabase dashboard or your admin tool) should only provision:
+
+- Auth user: email + password  
+- `profiles`: owner full name  
+- `gyms`: gym name + address (and optional gym email)  
+- `gym_roles`: `role = owner` linking user to gym  
+
+Leave `gyms.setup_completed_at` **null** until the owner finishes setup in the app.
+
+**First owner login** opens a 4-step wizard (not the dashboard):
+
+1. Welcome — confirms admin-provided gym name / address  
+2. Gym contact — gym phone, owner contact, currency  
+3. Operating hours — timezone + weekly schedule  
+4. Membership plan — at least one active plan  
+
+After **Finish**, `setup_completed_at` is set and the owner reaches the main dashboard. Apply migration `20260604150000_gym_owner_setup.sql`.
 
 ## E2E smoke path
 

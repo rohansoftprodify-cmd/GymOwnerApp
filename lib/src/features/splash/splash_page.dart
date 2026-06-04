@@ -1,15 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/navigation/post_auth_navigation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class SplashPage extends StatefulWidget {
+class SplashPage extends ConsumerStatefulWidget {
   const SplashPage({super.key});
 
   @override
-  State<SplashPage> createState() => _SplashPageState();
+  ConsumerState<SplashPage> createState() => _SplashPageState();
 }
 
-class _SplashPageState extends State<SplashPage> {
+class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   void initState() {
     super.initState();
@@ -23,7 +25,7 @@ class _SplashPageState extends State<SplashPage> {
 
     final session = Supabase.instance.client.auth.currentSession;
     if (session != null) {
-      context.go('/');
+      await navigateAfterSignIn(context, ref);
     } else {
       context.go('/onboarding');
     }

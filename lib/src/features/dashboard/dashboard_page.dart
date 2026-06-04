@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/tenant/gym_setup_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/tabs/attendance_tab.dart';
@@ -47,6 +48,17 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/login'));
+      return const SizedBox.shrink();
+    }
+
+    final setupRequiredAsync = ref.watch(gymOwnerSetupRequiredProvider);
+    if (setupRequiredAsync.isLoading) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (setupRequiredAsync.value == true) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (context.mounted) context.go('/owner-setup');
+      });
       return const SizedBox.shrink();
     }
 

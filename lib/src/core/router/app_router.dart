@@ -8,6 +8,7 @@ import 'package:gym_owner_app/src/features/onboarding/onboarding_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_section_page.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
+import 'package:gym_owner_app/src/features/setup/gym_owner_setup_page.dart';
 import 'package:gym_owner_app/src/features/splash/splash_page.dart';
 
 final appRouter = GoRouter(
@@ -16,6 +17,7 @@ final appRouter = GoRouter(
     GoRoute(path: '/splash', builder: (_, state) => const SplashPage()),
     GoRoute(path: '/onboarding', builder: (_, state) => const OnboardingPage()),
     GoRoute(path: '/login', builder: (_, state) => const LoginPage()),
+    GoRoute(path: '/owner-setup', builder: (_, state) => const GymOwnerSetupPage()),
     GoRoute(path: '/', builder: (_, state) => const DashboardPage()),
     GoRoute(
       path: '/attendance-history',

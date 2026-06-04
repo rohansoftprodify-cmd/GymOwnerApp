@@ -1,17 +1,18 @@
 import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/navigation/post_auth_navigation.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-class LoginPage extends StatefulWidget {
+class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({super.key});
 
   @override
-  State<LoginPage> createState() => _LoginPageState();
+  ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends State<LoginPage> {
+class _LoginPageState extends ConsumerState<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
@@ -23,7 +24,7 @@ class _LoginPageState extends State<LoginPage> {
   void initState() {
     super.initState();
     if (Supabase.instance.client.auth.currentSession != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/'));
+      WidgetsBinding.instance.addPostFrameCallback((_) => navigateAfterSignIn(context, ref));
     }
   }
 
@@ -47,7 +48,7 @@ class _LoginPageState extends State<LoginPage> {
         password: _passwordController.text,
       );
       if (mounted) {
-        context.go('/');
+        await navigateAfterSignIn(context, ref);
       }
     } on AuthException catch (e) {
       if (mounted) {

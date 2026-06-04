@@ -227,7 +227,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
         },
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 80),
+        padding: const EdgeInsets.only(bottom: 10),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -242,7 +242,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
               heroTag: 'prod',
               elevation: 0,
               backgroundColor: colorScheme.tertiaryContainer,
-              child: const Icon(Icons.add_business_rounded, size: 20),
+              child: Icon(Icons.add_business_rounded, size: 20, color: colorScheme.primary,),
             ),
             const SizedBox(height: 8),
             FloatingActionButton.extended(

@@ -1,9 +1,9 @@
 -- Demo seed data for local development.
 -- Replace UUIDs/emails before production.
-insert into public.gyms (id, name, email, phone, timezone, currency_code)
+insert into public.gyms (id, name, email, phone, timezone, currency_code, setup_completed_at)
 values
-  ('11111111-1111-1111-1111-111111111111', 'Iron Hub Downtown', 'owner@ironhub.test', '+10000000001', 'Asia/Kolkata', 'INR'),
-  ('22222222-2222-2222-2222-222222222222', 'PowerFit North', 'owner@powerfit.test', '+10000000002', 'Asia/Kolkata', 'INR')
+  ('11111111-1111-1111-1111-111111111111', 'Iron Hub Downtown', 'owner@ironhub.test', '+10000000001', 'Asia/Kolkata', 'INR', timezone('utc', now())),
+  ('22222222-2222-2222-2222-222222222222', 'PowerFit North', 'owner@powerfit.test', '+10000000002', 'Asia/Kolkata', 'INR', timezone('utc', now()))
 on conflict (id) do nothing;
 
 -- Profiles must reference existing auth.users IDs.
@@ -47,7 +47,7 @@ on conflict do nothing;
 
 -- Full linked dummy dataset for one gym: guptafittnessclub
 -- NOTE: profile id must exist in auth.users, or profile insert will fail.
-insert into public.gyms (id, name, email, phone, address, timezone, currency_code)
+insert into public.gyms (id, name, email, phone, address, timezone, currency_code, setup_completed_at)
 values (
   '33333333-3333-3333-3333-333333333333',
   'guptafittnessclub',
@@ -55,7 +55,8 @@ values (
   '+919100000003',
   'Main Road, Jaipur',
   'Asia/Kolkata',
-  'INR'
+  'INR',
+  timezone('utc', now())
 )
 on conflict (id) do nothing;
 
