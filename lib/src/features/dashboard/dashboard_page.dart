@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/auth/single_session_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/gym_setup_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
@@ -18,6 +19,8 @@ class DashboardPage extends ConsumerStatefulWidget {
 
 class _DashboardPageState extends ConsumerState<DashboardPage> {
   int _index = 0;
+  bool _redirectedToLogin = false;
+  bool _redirectedToSetup = false;
 
   static const _navItems =
       <({String label, IconData icon, IconData selectedIcon})>[
@@ -38,6 +41,19 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
         ),
       ];
 
+  void _scheduleRedirect(
+    VoidCallback redirect, {
+    required bool Function() alreadyRedirected,
+    required void Function(bool) setRedirected,
+  }) {
+    if (alreadyRedirected()) return;
+    setRedirected(true);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      redirect();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -45,21 +61,39 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
     final semantics = context.appColors;
     final isDark = theme.brightness == Brightness.dark;
 
+    ref.listen<AsyncValue<bool>>(gymOwnerSetupRequiredProvider, (
+      previous,
+      next,
+    ) {
+      final required = next.value;
+      if (required == true) {
+        _scheduleRedirect(
+          () => context.go('/owner-setup'),
+          alreadyRedirected: () => _redirectedToSetup,
+          setRedirected: (v) => _redirectedToSetup = v,
+        );
+      } else if (required == false) {
+        _redirectedToSetup = false;
+      }
+    });
+
     final session = Supabase.instance.client.auth.currentSession;
     if (session == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/login'));
+      _scheduleRedirect(
+        () => context.go('/login'),
+        alreadyRedirected: () => _redirectedToLogin,
+        setRedirected: (v) => _redirectedToLogin = v,
+      );
       return const SizedBox.shrink();
     }
+    _redirectedToLogin = false;
 
     final setupRequiredAsync = ref.watch(gymOwnerSetupRequiredProvider);
     if (setupRequiredAsync.isLoading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
     if (setupRequiredAsync.value == true) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted) context.go('/owner-setup');
-      });
-      return const SizedBox.shrink();
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     final tenantAsync = ref.watch(tenantContextProvider);
@@ -132,7 +166,10 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                             ),
                             const SizedBox(height: 4),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
                               decoration: BoxDecoration(
                                 color: semantics.accentLime,
                                 borderRadius: BorderRadius.circular(4),
@@ -150,11 +187,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                           ],
                         ),
                       ),
-                      Icon(
-                        Icons.chevron_right_rounded,
-                        color: semantics.mutedText,
-                        size: 22,
-                      ),
+                      // Icon(
+                      //   Icons.chevron_right_rounded,
+                      //   color: semantics.mutedText,
+                      //   size: 22,
+                      // ),
                     ],
                   ),
                 ),
@@ -166,22 +203,27 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   final shouldLogout = await showDialog<bool>(
                     context: context,
                     builder: (dialogContext) => AlertDialog(
-                      title: const Text('Logout?', style: TextStyle(fontSize: 18)),
+                      title: const Text(
+                        'Logout?',
+                        style: TextStyle(fontSize: 18),
+                      ),
                       content: const Text('Sure you want to logout?'),
                       actions: [
                         TextButton(
-                          onPressed: () => Navigator.of(dialogContext).pop(false),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(false),
                           child: const Text('Cancel'),
                         ),
                         FilledButton(
-                          onPressed: () => Navigator.of(dialogContext).pop(true),
+                          onPressed: () =>
+                              Navigator.of(dialogContext).pop(true),
                           child: const Text('Logout'),
                         ),
                       ],
                     ),
                   );
                   if (shouldLogout != true) return;
-                  await Supabase.instance.client.auth.signOut();
+                  await ref.read(singleSessionServiceProvider).signOutLocally();
                   if (context.mounted) context.go('/login');
                 },
                 icon: Icon(
@@ -210,7 +252,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                 color: semantics.cardBackground,
                 borderRadius: BorderRadius.circular(20),
                 border: isDark
-                    ? Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.4))
+                    ? Border.all(
+                        color: colorScheme.outlineVariant.withValues(
+                          alpha: 0.4,
+                        ),
+                      )
                     : null,
                 boxShadow: isDark
                     ? null
@@ -229,7 +275,9 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   selectedIndex: _index,
                   elevation: 0,
                   backgroundColor: semantics.cardBackground,
-                  indicatorColor: colorScheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+                  indicatorColor: colorScheme.primary.withValues(
+                    alpha: isDark ? 0.22 : 0.14,
+                  ),
                   surfaceTintColor: Colors.transparent,
                   onDestinationSelected: (i) => setState(() => _index = i),
                   labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,

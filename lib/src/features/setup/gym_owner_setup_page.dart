@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/auth/single_session_provider.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/tenant/gym_setup_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
@@ -10,7 +11,6 @@ import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/profile/models/gym_day_hours.dart';
 import 'package:gym_owner_app/src/features/profile/models/subscription_plan_item.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GymOwnerSetupPage extends ConsumerStatefulWidget {
   const GymOwnerSetupPage({super.key});
@@ -311,7 +311,7 @@ class _GymOwnerSetupPageState extends ConsumerState<GymOwnerSetupPage> {
             onPressed: _busy
                 ? null
                 : () async {
-                    await Supabase.instance.client.auth.signOut();
+                    await ref.read(singleSessionServiceProvider).signOutLocally();
                     if (context.mounted) context.go('/login');
                   },
             child: const Text('Sign out'),

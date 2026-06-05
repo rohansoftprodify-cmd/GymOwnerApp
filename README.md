@@ -28,6 +28,7 @@ This repository is separate from [Megylla](https://github.com/your-org/Megylla) 
    - `supabase/migrations/20260603180100_member_accounts.sql` (member app login + RLS)
    - `supabase/migrations/20260603180200_fix_rls_recursion.sql` (fixes members list stack overflow)
    - `supabase/migrations/20260604150000_gym_owner_setup.sql` (owner setup wizard flag)
+   - `supabase/migrations/20260605170000_single_device_session.sql` (single-device login)
    - Optional dev data: `supabase/seed.sql` (requires matching `auth.users` IDs)
 
 ## Project layout

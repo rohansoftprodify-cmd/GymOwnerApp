@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/auth/single_session_provider.dart';
 import 'package:gym_owner_app/src/core/navigation/post_auth_navigation.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
@@ -38,6 +39,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
+    final proceed = await showConfirmDialog(
+      context,
+      title: 'Sign in on this device?',
+      message:
+          'This account can only be active on one device at a time. '
+          'Signing in here will log out any other device using this account.',
+      confirmLabel: 'Continue',
+      icon: Icons.devices_rounded,
+    );
+    if (!proceed || !mounted) return;
+
     setState(() {
       _loading = true;
       _error = null;
@@ -47,6 +59,32 @@ class _LoginPageState extends ConsumerState<LoginPage> {
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
+
+      final hadOtherDevice = await ref
+          .read(singleSessionServiceProvider)
+          .completeSignInAfterPassword();
+
+      if (!mounted) return;
+
+      await showDialog<void>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          icon: const Icon(Icons.check_circle_outline_rounded),
+          title: const Text('Signed in'),
+          content: Text(
+            hadOtherDevice
+                ? 'You are signed in on this device. The other device has been logged out.'
+                : 'You are signed in on this device.',
+          ),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('Continue'),
+            ),
+          ],
+        ),
+      );
+
       if (mounted) {
         await navigateAfterSignIn(context, ref);
       }

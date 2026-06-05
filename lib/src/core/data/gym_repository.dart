@@ -1116,6 +1116,13 @@ class GymRepository {
     return _client.storage.from(dietImagesBucket).getPublicUrl(imagePath);
   }
 
+  static const String productImagesBucket = 'product-images';
+
+  String? productImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) return null;
+    return _client.storage.from(productImagesBucket).getPublicUrl(imagePath.trim());
+  }
+
   Future<Map<String, dynamic>> reports(String gymId) async {
     final attendanceRows = await _logApiCall(
       action: 'report_attendance_daily.select',

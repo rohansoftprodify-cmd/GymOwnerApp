@@ -26,8 +26,8 @@ class _FeeStructurePageState extends ConsumerState<FeeStructurePage> {
     _load();
   }
 
-  Future<void> _load() async {
-    setState(() => _loading = true);
+  Future<void> _load({bool showLoading = true}) async {
+    if (showLoading && mounted) setState(() => _loading = true);
     try {
       final repo = ref.read(gymRepositoryProvider);
       final gym = await repo.gymById(widget.gymId);
@@ -51,7 +51,7 @@ class _FeeStructurePageState extends ConsumerState<FeeStructurePage> {
       ref,
       gymId: widget.gymId,
       existing: existing,
-      onSaved: _load,
+      onSaved: () => _load(showLoading: false),
     );
   }
 

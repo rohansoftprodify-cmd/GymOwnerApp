@@ -136,44 +136,50 @@ class HomeTab extends ConsumerWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            SectionHeader(
-              title: 'Exclusive Offers',
-              actionLabel: 'View All',
-              onAction: () => showPromotionsSheet(context, allPromotions),
-            ),
-            const SizedBox(height: 4),
-            OffersCarousel(promotions: activePromotions),
-            const SizedBox(height: 4),
-            SectionHeader(
-              title: 'Pending Fees',
-              actionLabel: 'Details',
-              onAction: () =>
-                  showFeeListSheet(context, pendingFees, 'Pending Fees'),
-            ),
-            const SizedBox(height: 4),
-            FeeHorizontalList(
-              items: pendingFees,
-              emptyText: 'No pending fees.',
-              mode: FeeListMode.pendingFees,
-            ),
-            const SizedBox(height: 4),
-            SectionHeader(
-              title: 'Renewals',
-              actionLabel: 'Full List',
-              onAction: () => showFeeListSheet(
-                context,
-                upcomingRenewals,
-                'Upcoming Renewals',
+            if (activePromotions.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SectionHeader(
+                title: 'Exclusive Offers',
+                actionLabel: 'View All',
+                onAction: () => showPromotionsSheet(context, allPromotions),
+              ),
+              const SizedBox(height: 4),
+              OffersCarousel(promotions: activePromotions),
+            ],
+            if (pendingFees.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SectionHeader(
+                title: 'Pending Fees',
+                actionLabel: 'Details',
+                onAction: () =>
+                    showFeeListSheet(context, pendingFees, 'Pending Fees'),
+              ),
+              const SizedBox(height: 4),
+              FeeHorizontalList(
+                items: pendingFees,
+                emptyText: 'No pending fees.',
+                mode: FeeListMode.pendingFees,
+              ),
+            ],
+            if (upcomingRenewals.isNotEmpty) ...[
+              const SizedBox(height: 4),
+              SectionHeader(
+                title: 'Renewals',
+                actionLabel: 'Full List',
+                onAction: () => showFeeListSheet(
+                  context,
+                  upcomingRenewals,
+                  'Upcoming Renewals',
+                  mode: FeeListMode.renewals,
+                ),
+              ),
+              const SizedBox(height: 4),
+              FeeHorizontalList(
+                items: upcomingRenewals,
+                emptyText: 'No renewals due.',
                 mode: FeeListMode.renewals,
               ),
-            ),
-            const SizedBox(height: 4),
-            FeeHorizontalList(
-              items: upcomingRenewals,
-              emptyText: 'No renewals due.',
-              mode: FeeListMode.renewals,
-            ),
+            ],
           ],
         );
       },

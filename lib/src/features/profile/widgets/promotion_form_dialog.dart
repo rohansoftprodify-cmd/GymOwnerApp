@@ -152,8 +152,8 @@ Future<void> showPromotionFormDialog(
                 );
                 if (!dialogContext.mounted) return;
                 if (ok) {
-                  navigator.pop();
-                  onSaved();
+                  Navigator.of(dialogContext).pop();
+                  runAfterDialogClosed(onSaved);
                 }
               },
               child: const Text('Save'),

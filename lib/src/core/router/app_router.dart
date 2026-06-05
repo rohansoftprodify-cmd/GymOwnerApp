@@ -11,7 +11,10 @@ import 'package:gym_owner_app/src/features/profile/profile_section.dart';
 import 'package:gym_owner_app/src/features/setup/gym_owner_setup_page.dart';
 import 'package:gym_owner_app/src/features/splash/splash_page.dart';
 
+final rootNavigatorKey = GlobalKey<NavigatorState>();
+
 final appRouter = GoRouter(
+  navigatorKey: rootNavigatorKey,
   initialLocation: '/splash',
   routes: <RouteBase>[
     GoRoute(path: '/splash', builder: (_, state) => const SplashPage()),

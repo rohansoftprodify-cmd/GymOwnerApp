@@ -13,175 +13,226 @@ Future<void> showPlanFormDialog(
   SubscriptionPlanItem? existing,
   required VoidCallback onSaved,
 }) async {
-  final navigator = Navigator.of(context);
-  final nameController = TextEditingController(text: existing?.name ?? '');
-  final descriptionController = TextEditingController(text: existing?.description ?? '');
-  final priceController = TextEditingController(
-    text: existing != null ? existing.price.toStringAsFixed(0) : '',
-  );
-  final durationController = TextEditingController(
-    text: '${existing?.durationDays ?? 30}',
-  );
-  var isActive = existing?.isActive ?? true;
-  var selectedDurationPreset = _matchPreset(existing?.durationDays ?? 30);
-
-  await showDialog<void>(
+  final saved = await showDialog<bool>(
     context: context,
-    builder: (dialogContext) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) {
-        return AlertDialog(
-          icon: const Icon(Icons.payments_rounded),
-          title: Text(existing == null ? 'Add membership plan' : 'Edit plan'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AppTextField(
-                  controller: nameController,
-                  label: 'Plan name',
-                  prefixIcon: const Icon(Icons.card_membership_outlined, size: 18),
-                ),
-                const SizedBox(height: 10),
-                AppTextField(
-                  controller: descriptionController,
-                  label: 'Description (optional)',
-                  prefixIcon: const Icon(Icons.notes_outlined, size: 18),
-                ),
-                const SizedBox(height: 10),
-                AppTextField(
-                  controller: priceController,
-                  label: 'Price',
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
-                  inputFormatters: [
-                    FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                Align(
-                  alignment: Alignment.centerLeft,
-                  child: Text(
-                    'Duration',
-                    style: Theme.of(dialogContext).textTheme.labelMedium,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Wrap(
-                  spacing: 6,
-                  runSpacing: 6,
-                  children: [
-                    for (final preset in _durationPresets)
-                      ChoiceChip(
-                        label: Text(preset.label, style: const TextStyle(fontSize: 11)),
-                        selected: selectedDurationPreset == preset.days,
-                        onSelected: (_) {
-                          setDialogState(() {
-                            selectedDurationPreset = preset.days;
-                            durationController.text = '${preset.days}';
-                          });
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                AppTextField(
-                  controller: durationController,
-                  label: 'Duration (days)',
-                  keyboardType: TextInputType.number,
-                  prefixIcon: const Icon(Icons.calendar_month_outlined, size: 18),
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  onChanged: (v) {
-                    final days = int.tryParse(v);
-                    if (days != null) {
-                      setDialogState(() => selectedDurationPreset = _matchPreset(days));
-                    }
-                  },
-                ),
-                if (existing != null) ...[
-                  const SizedBox(height: 12),
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: const Text('Active plan', style: TextStyle(fontSize: 13)),
-                    subtitle: const Text(
-                      'Inactive plans are hidden when adding members',
-                      style: TextStyle(fontSize: 11),
-                    ),
-                    value: isActive,
-                    onChanged: (v) => setDialogState(() => isActive = v),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => navigator.pop(),
-              child: const Text('Cancel'),
-            ),
-            FilledButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                final price = double.tryParse(priceController.text.trim());
-                final durationDays = int.tryParse(durationController.text.trim());
-
-                if (name.isEmpty) {
-                  await showAppErrorDialog(
-                    dialogContext,
-                    title: 'Missing name',
-                    error: 'Enter a plan name.',
-                  );
-                  return;
-                }
-                if (price == null || price < 0) {
-                  await showAppErrorDialog(
-                    dialogContext,
-                    title: 'Invalid price',
-                    error: 'Enter a valid price.',
-                  );
-                  return;
-                }
-                if (durationDays == null || durationDays <= 0) {
-                  await showAppErrorDialog(
-                    dialogContext,
-                    title: 'Invalid duration',
-                    error: 'Duration must be at least 1 day.',
-                  );
-                  return;
-                }
-
-                final ok = await runWithErrorDialog(
-                  dialogContext,
-                  errorTitle: 'Could not save plan',
-                  action: () => ref.read(gymRepositoryProvider).upsertPlan(
-                        gymId: gymId,
-                        id: existing?.id,
-                        name: name,
-                        description: descriptionController.text.trim().isEmpty
-                            ? null
-                            : descriptionController.text.trim(),
-                        durationDays: durationDays,
-                        price: price,
-                        isActive: isActive,
-                      ),
-                );
-                if (!dialogContext.mounted) return;
-                if (ok) {
-                  navigator.pop();
-                  onSaved();
-                }
-              },
-              child: const Text('Save'),
-            ),
-          ],
-        );
-      },
+    builder: (dialogContext) => _PlanFormDialog(
+      gymId: gymId,
+      existing: existing,
     ),
   );
 
-  nameController.dispose();
-  descriptionController.dispose();
-  priceController.dispose();
-  durationController.dispose();
+  if (saved == true) {
+    onSaved();
+  }
+}
+
+class _PlanFormDialog extends ConsumerStatefulWidget {
+  const _PlanFormDialog({
+    required this.gymId,
+    required this.existing,
+  });
+
+  final String gymId;
+  final SubscriptionPlanItem? existing;
+
+  @override
+  ConsumerState<_PlanFormDialog> createState() => _PlanFormDialogState();
+}
+
+class _PlanFormDialogState extends ConsumerState<_PlanFormDialog> {
+  late final TextEditingController _nameController;
+  late final TextEditingController _descriptionController;
+  late final TextEditingController _priceController;
+  late final TextEditingController _durationController;
+  late bool _isActive;
+  late int _selectedDurationPreset;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    final existing = widget.existing;
+    _nameController = TextEditingController(text: existing?.name ?? '');
+    _descriptionController = TextEditingController(text: existing?.description ?? '');
+    _priceController = TextEditingController(
+      text: existing != null ? existing.price.toStringAsFixed(0) : '',
+    );
+    _durationController = TextEditingController(
+      text: '${existing?.durationDays ?? 30}',
+    );
+    _isActive = existing?.isActive ?? true;
+    _selectedDurationPreset = _matchPreset(existing?.durationDays ?? 30);
+  }
+
+  @override
+  void dispose() {
+    _nameController.dispose();
+    _descriptionController.dispose();
+    _priceController.dispose();
+    _durationController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _save() async {
+    final name = _nameController.text.trim();
+    final price = double.tryParse(_priceController.text.trim());
+    final durationDays = int.tryParse(_durationController.text.trim());
+
+    if (name.isEmpty) {
+      await showAppErrorDialog(
+        context,
+        title: 'Missing name',
+        error: 'Enter a plan name.',
+      );
+      return;
+    }
+    if (price == null || price < 0) {
+      await showAppErrorDialog(
+        context,
+        title: 'Invalid price',
+        error: 'Enter a valid price.',
+      );
+      return;
+    }
+    if (durationDays == null || durationDays <= 0) {
+      await showAppErrorDialog(
+        context,
+        title: 'Invalid duration',
+        error: 'Duration must be at least 1 day.',
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+    final ok = await runWithErrorDialog(
+      context,
+      errorTitle: 'Could not save plan',
+      action: () => ref.read(gymRepositoryProvider).upsertPlan(
+            gymId: widget.gymId,
+            id: widget.existing?.id,
+            name: name,
+            description: _descriptionController.text.trim().isEmpty
+                ? null
+                : _descriptionController.text.trim(),
+            durationDays: durationDays,
+            price: price,
+            isActive: _isActive,
+          ),
+    );
+
+    if (!mounted) return;
+    setState(() => _saving = false);
+    if (ok) {
+      Navigator.of(context).pop(true);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final existing = widget.existing;
+
+    return AlertDialog(
+      icon: const Icon(Icons.payments_rounded),
+      title: Text(existing == null ? 'Add membership plan' : 'Edit plan'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AppTextField(
+              controller: _nameController,
+              label: 'Plan name',
+              prefixIcon: const Icon(Icons.card_membership_outlined, size: 18),
+            ),
+            const SizedBox(height: 10),
+            AppTextField(
+              controller: _descriptionController,
+              label: 'Description (optional)',
+              prefixIcon: const Icon(Icons.notes_outlined, size: 18),
+            ),
+            const SizedBox(height: 10),
+            AppTextField(
+              controller: _priceController,
+              label: 'Price',
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              prefixIcon: const Icon(Icons.currency_rupee_rounded, size: 18),
+              inputFormatters: [
+                FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Duration',
+                style: Theme.of(context).textTheme.labelMedium,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final preset in _durationPresets)
+                  ChoiceChip(
+                    label: Text(preset.label, style: const TextStyle(fontSize: 11)),
+                    selected: _selectedDurationPreset == preset.days,
+                    onSelected: (_) {
+                      setState(() {
+                        _selectedDurationPreset = preset.days;
+                        _durationController.text = '${preset.days}';
+                      });
+                    },
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            AppTextField(
+              controller: _durationController,
+              label: 'Duration (days)',
+              keyboardType: TextInputType.number,
+              prefixIcon: const Icon(Icons.calendar_month_outlined, size: 18),
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              onChanged: (v) {
+                final days = int.tryParse(v);
+                if (days != null) {
+                  setState(() => _selectedDurationPreset = _matchPreset(days));
+                }
+              },
+            ),
+            if (existing != null) ...[
+              const SizedBox(height: 12),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Active plan', style: TextStyle(fontSize: 13)),
+                subtitle: const Text(
+                  'Inactive plans are hidden when adding members',
+                  style: TextStyle(fontSize: 11),
+                ),
+                value: _isActive,
+                onChanged: (v) => setState(() => _isActive = v),
+              ),
+            ],
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const Text('Save'),
+        ),
+      ],
+    );
+  }
 }
 
 class _DurationPreset {

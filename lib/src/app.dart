@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/auth/single_session_guard.dart';
 import 'package:gym_owner_app/src/core/router/app_router.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme.dart';
 import 'package:gym_owner_app/src/core/theme/theme_mode_provider.dart';
@@ -27,7 +28,9 @@ class GymOwnerApp extends ConsumerWidget {
           data: mediaQuery.copyWith(
             textScaler: TextScaler.linear(compactScale),
           ),
-          child: child ?? const SizedBox.shrink(),
+          child: SingleSessionGuard(
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

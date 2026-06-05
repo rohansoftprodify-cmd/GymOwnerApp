@@ -1,5 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+
+/// Runs [action] after the dialog/route close finishes to avoid rebuild races.
+void runAfterDialogClosed(VoidCallback action) {
+  WidgetsBinding.instance.addPostFrameCallback((_) {
+    if (WidgetsBinding.instance.schedulerPhase == SchedulerPhase.persistentCallbacks) {
+      WidgetsBinding.instance.addPostFrameCallback((_) => action());
+    } else {
+      action();
+    }
+  });
+}
 
 /// User-facing message from API / RPC errors.
 String apiErrorMessage(Object error) {
