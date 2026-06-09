@@ -33,6 +33,12 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with SingleTicker
 
   void _refresh() => setState(() => _reloadToken++);
 
+  Future<void> _pullRefresh() async {
+    final future = ref.read(gymRepositoryProvider).attendance(widget.gymId);
+    setState(() => _reloadToken++);
+    await future;
+  }
+
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(gymRepositoryProvider);
@@ -52,6 +58,12 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with SingleTicker
                     Tab(text: 'Check-out'),
                   ],
                 ),
+              ),
+              TextButton.icon(
+                onPressed: () => context.push('/gym-check-in-qr?gymId=${widget.gymId}'),
+                icon: const Icon(Icons.qr_code_2_rounded, size: 16),
+                label: const Text('Gym QR', style: TextStyle(fontSize: 12)),
+                style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
               ),
               TextButton.icon(
                 onPressed: () => context.push('/attendance-history?gymId=${widget.gymId}'),
@@ -90,8 +102,12 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with SingleTicker
                     gymId: widget.gymId,
                     records: activeCheckIns,
                     onRefresh: _refresh,
+                    onPullRefresh: _pullRefresh,
                   ),
-                  _CheckOutPanel(records: todayCompleted),
+                  _CheckOutPanel(
+                    records: todayCompleted,
+                    onPullRefresh: _pullRefresh,
+                  ),
                 ],
               );
             },
@@ -107,22 +123,35 @@ class _CheckInPanel extends ConsumerWidget {
     required this.gymId,
     required this.records,
     required this.onRefresh,
+    required this.onPullRefresh,
   });
 
   final String gymId;
   final List<Map<String, dynamic>> records;
   final VoidCallback onRefresh;
+  final Future<void> Function() onPullRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return Stack(
       children: [
-        records.isEmpty
-            ? const Center(child: Text('No active check-ins'))
-            : ListView.builder(
-                padding: const EdgeInsets.only(bottom: 88, top: 4),
-                itemCount: records.length,
-                itemBuilder: (_, i) {
+        RefreshIndicator(
+          onRefresh: onPullRefresh,
+          child: records.isEmpty
+              ? ListView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 88, top: 4),
+                  children: const [
+                    SizedBox(height: 80),
+                    Center(child: Text('No active check-ins')),
+                    SizedBox(height: 120),
+                  ],
+                )
+              : ListView.builder(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.only(bottom: 88, top: 4),
+                  itemCount: records.length,
+                  itemBuilder: (_, i) {
                   final record = records[i];
                   final memberName = memberNameFromRecord(record);
                   final memberId = memberIdFromRecord(record);
@@ -146,6 +175,7 @@ class _CheckInPanel extends ConsumerWidget {
                   );
                 },
               ),
+        ),
         Positioned(
           right: 12,
           bottom: 12,
@@ -161,28 +191,42 @@ class _CheckInPanel extends ConsumerWidget {
 }
 
 class _CheckOutPanel extends StatelessWidget {
-  const _CheckOutPanel({required this.records});
+  const _CheckOutPanel({
+    required this.records,
+    required this.onPullRefresh,
+  });
 
   final List<Map<String, dynamic>> records;
+  final Future<void> Function() onPullRefresh;
 
   @override
   Widget build(BuildContext context) {
-    if (records.isEmpty) {
-      return const Center(child: Text('No check-outs recorded today'));
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.only(top: 4, bottom: 16),
-      itemCount: records.length,
-      itemBuilder: (_, i) {
-        final record = records[i];
-        return AttendanceRecordCard(
-          memberName: memberNameFromRecord(record),
-          checkInLabel: AttendanceRecordCard.formatTime(record['check_in_at'] as String?),
-          checkOutLabel: AttendanceRecordCard.formatTime(record['check_out_at'] as String?),
-          isActiveCheckIn: false,
-        );
-      },
+    return RefreshIndicator(
+      onRefresh: onPullRefresh,
+      child: records.isEmpty
+          ? ListView(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 4, bottom: 16),
+              children: const [
+                SizedBox(height: 80),
+                Center(child: Text('No check-outs recorded today')),
+                SizedBox(height: 120),
+              ],
+            )
+          : ListView.builder(
+              physics: const AlwaysScrollableScrollPhysics(),
+              padding: const EdgeInsets.only(top: 4, bottom: 16),
+              itemCount: records.length,
+              itemBuilder: (_, i) {
+                final record = records[i];
+                return AttendanceRecordCard(
+                  memberName: memberNameFromRecord(record),
+                  checkInLabel: AttendanceRecordCard.formatTime(record['check_in_at'] as String?),
+                  checkOutLabel: AttendanceRecordCard.formatTime(record['check_out_at'] as String?),
+                  isActiveCheckIn: false,
+                );
+              },
+            ),
     );
   }
 }

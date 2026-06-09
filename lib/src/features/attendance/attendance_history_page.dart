@@ -17,6 +17,7 @@ class AttendanceHistoryPage extends ConsumerStatefulWidget {
 class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
   _HistoryRange _range = _HistoryRange.last7;
   final _searchController = TextEditingController();
+  int _reloadToken = 0;
 
   @override
   void dispose() {
@@ -40,6 +41,12 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
       case _HistoryRange.all:
         return true;
     }
+  }
+
+  Future<void> _pullRefresh() async {
+    final future = ref.read(gymRepositoryProvider).attendance(widget.gymId, limit: 500);
+    setState(() => _reloadToken++);
+    await future;
   }
 
   List<Map<String, dynamic>> _applyFilters(List<Map<String, dynamic>> rows) {
@@ -66,6 +73,7 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
         title: const Text('Attendance History'),
       ),
       body: FutureBuilder<List<Map<String, dynamic>>>(
+        key: ValueKey(_reloadToken),
         future: repo.attendance(widget.gymId, limit: 500),
         builder: (context, snap) {
           if (!snap.hasData) {
@@ -107,14 +115,27 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
               ),
               const SizedBox(height: 8),
               Expanded(
-                child: grouped.isEmpty
-                    ? Center(
-                        child: Text('No records for selected filters', style: theme.textTheme.bodyMedium),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
-                        itemCount: grouped.length,
-                        itemBuilder: (_, i) {
+                child: RefreshIndicator(
+                  onRefresh: _pullRefresh,
+                  child: grouped.isEmpty
+                      ? ListView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                          children: [
+                            const SizedBox(height: 48),
+                            Center(
+                              child: Text(
+                                'No records for selected filters',
+                                style: theme.textTheme.bodyMedium,
+                              ),
+                            ),
+                          ],
+                        )
+                      : ListView.builder(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          padding: const EdgeInsets.fromLTRB(12, 0, 12, 16),
+                          itemCount: grouped.length,
+                          itemBuilder: (_, i) {
                           final day = grouped.keys.elementAt(i);
                           final dayRecords = grouped[day]!;
                           return Column(
@@ -150,6 +171,7 @@ class _AttendanceHistoryPageState extends ConsumerState<AttendanceHistoryPage> {
                           );
                         },
                       ),
+                ),
               ),
             ],
           );

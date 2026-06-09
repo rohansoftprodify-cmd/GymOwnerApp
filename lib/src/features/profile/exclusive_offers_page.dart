@@ -4,8 +4,9 @@ import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/exclusive_offer_card.dart';
+import 'package:gym_owner_app/src/features/profile/models/offer_templates.dart';
 import 'package:gym_owner_app/src/features/profile/models/promotion_item.dart';
-import 'package:gym_owner_app/src/features/profile/widgets/promotion_form_dialog.dart';
+import 'package:gym_owner_app/src/features/profile/offer_editor_page.dart';
 
 class ExclusiveOffersPage extends ConsumerStatefulWidget {
   const ExclusiveOffersPage({super.key, required this.gymId});
@@ -42,14 +43,101 @@ class _ExclusiveOffersPageState extends ConsumerState<ExclusiveOffersPage> {
     }
   }
 
-  Future<void> _openForm({PromotionItem? existing}) async {
-    await showPromotionFormDialog(
-      context,
-      ref,
-      gymId: widget.gymId,
-      existing: existing,
-      onSaved: _load,
+  Future<void> _openTemplatePicker() async {
+    final templateId = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        final theme = Theme.of(context);
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'Choose a template',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 12),
+                GridView.builder(
+                  shrinkWrap: true,
+                  physics: const NeverScrollableScrollPhysics(),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    mainAxisSpacing: 10,
+                    crossAxisSpacing: 10,
+                    childAspectRatio: 1.6,
+                  ),
+                  itemCount: OfferTemplates.all.length,
+                  itemBuilder: (_, index) {
+                    final template = OfferTemplates.all[index];
+                    return InkWell(
+                      onTap: () => Navigator.of(context).pop(template.id),
+                      borderRadius: BorderRadius.circular(14),
+                      child: Ink(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(14),
+                          gradient: LinearGradient(
+                            colors: [template.primaryColor, template.secondaryColor],
+                          ),
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                template.decorationIcon ?? Icons.local_offer_outlined,
+                                color: template.textColor,
+                                size: 20,
+                              ),
+                              const Spacer(),
+                              Text(
+                                template.name,
+                                style: TextStyle(
+                                  color: template.textColor,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 13,
+                                ),
+                              ),
+                              Text(
+                                template.defaultBadge,
+                                style: TextStyle(
+                                  color: template.textColor.withValues(alpha: 0.85),
+                                  fontSize: 10,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
+
+    if (templateId == null || !mounted) return;
+    await _openEditor(initialTemplateId: templateId);
+  }
+
+  Future<void> _openEditor({PromotionItem? existing, String? initialTemplateId}) async {
+    final saved = await Navigator.of(context).push<bool>(
+      MaterialPageRoute(
+        builder: (_) => OfferEditorPage(
+          gymId: widget.gymId,
+          existing: existing,
+          initialTemplateId: initialTemplateId,
+        ),
+      ),
+    );
+    if (saved == true && mounted) await _load();
   }
 
   Future<void> _toggleActive(PromotionItem offer) async {
@@ -113,15 +201,15 @@ class _ExclusiveOffersPageState extends ConsumerState<ExclusiveOffersPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Create promotions to show on the home screen carousel.',
+                      'Pick a template, customize colors and text, then publish to the home carousel.',
                       textAlign: TextAlign.center,
                       style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
                     ),
                     const SizedBox(height: 20),
                     FilledButton.icon(
-                      onPressed: () => _openForm(),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Add first offer'),
+                      onPressed: _openTemplatePicker,
+                      icon: const Icon(Icons.dashboard_customize_outlined, size: 18),
+                      label: const Text('Create from template'),
                     ),
                   ],
                 ),
@@ -137,7 +225,7 @@ class _ExclusiveOffersPageState extends ConsumerState<ExclusiveOffersPage> {
               final offer = _offers[i];
               return _OfferManageTile(
                 offer: offer,
-                onEdit: () => _openForm(existing: offer),
+                onEdit: () => _openEditor(existing: offer),
                 onToggleActive: () => _toggleActive(offer),
               );
             },
@@ -147,9 +235,9 @@ class _ExclusiveOffersPageState extends ConsumerState<ExclusiveOffersPage> {
             right: 16,
             bottom: 16,
             child: FloatingActionButton.extended(
-              onPressed: () => _openForm(),
+              onPressed: _openTemplatePicker,
               icon: const Icon(Icons.add_rounded, size: 20),
-              label: const Text('Add offer'),
+              label: const Text('New offer'),
             ),
           ),
       ],
@@ -227,7 +315,7 @@ class _OfferManageTile extends StatelessWidget {
               TextButton.icon(
                 onPressed: onEdit,
                 icon: const Icon(Icons.edit_outlined, size: 16),
-                label: const Text('Edit', style: TextStyle(fontSize: 12)),
+                label: const Text('Edit design', style: TextStyle(fontSize: 12)),
                 style: TextButton.styleFrom(
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 8),

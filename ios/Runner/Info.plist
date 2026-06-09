@@ -49,5 +49,7 @@
 	<string>Select photos for exercise demonstrations.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Take photos for exercise demonstrations.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Location is used to set your gym check-in coordinates.</string>
 </dict>
 </plist>

@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/features/ai/ai_analysis_page.dart';
 import 'package:gym_owner_app/src/features/auth/login_page.dart';
 import 'package:gym_owner_app/src/features/attendance/attendance_history_page.dart';
+import 'package:gym_owner_app/src/features/attendance/gym_check_in_qr_page.dart';
 import 'package:gym_owner_app/src/features/dashboard/dashboard_page.dart';
 import 'package:gym_owner_app/src/features/members/members_page.dart';
 import 'package:gym_owner_app/src/features/onboarding/onboarding_page.dart';
+import 'package:gym_owner_app/src/features/profile/gym_check_in_location_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_section_page.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
@@ -22,6 +25,36 @@ final appRouter = GoRouter(
     GoRoute(path: '/login', builder: (_, state) => const LoginPage()),
     GoRoute(path: '/owner-setup', builder: (_, state) => const GymOwnerSetupPage()),
     GoRoute(path: '/', builder: (_, state) => const DashboardPage()),
+    GoRoute(
+      path: '/ai-analysis',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return AiAnalysisPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/gym-check-in-location',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return GymCheckInLocationPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/gym-check-in-qr',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return GymCheckInQrPage(gymId: gymId);
+      },
+    ),
     GoRoute(
       path: '/attendance-history',
       builder: (_, state) {

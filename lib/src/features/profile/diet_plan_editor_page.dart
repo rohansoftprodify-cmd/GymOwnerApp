@@ -7,6 +7,7 @@ import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/profile/models/diet_goal_info.dart';
 import 'package:gym_owner_app/src/features/profile/models/diet_models.dart';
+import 'package:gym_owner_app/src/features/profile/widgets/ai_generate_diet_dialog.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/diet_goal_guide_card.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/diet_meal_editor_sheet.dart';
 import 'package:image_picker/image_picker.dart';
@@ -44,6 +45,7 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
   bool _isActive = true;
   bool _loading = true;
   bool _saving = false;
+  bool _generatingAi = false;
   List<DietMealItem> _meals = [];
 
   bool get _planPersisted => _savedPlanId != null;
@@ -191,10 +193,127 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
     if (!mounted) return;
     setState(() => _saving = false);
     if (ok) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Plan saved — you can add meals below')),
-      );
+      final hadUnsavedMeals = _meals.any((m) => m.id == null);
+      if (hadUnsavedMeals) {
+        await _persistAiMeals();
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plan saved — you can add meals below')),
+        );
+      }
     }
+  }
+
+  Future<void> _persistAiMeals() async {
+    if (_savedPlanId == null) return;
+    final repo = ref.read(gymRepositoryProvider);
+    final ok = await runWithErrorDialog(
+      context,
+      errorTitle: 'Save meals failed',
+      action: () async {
+        var sortOrder = _meals.where((m) => m.id != null).length;
+        for (final meal in _meals) {
+          if (meal.id != null) continue;
+          final mealRow = await repo.upsertDietMeal(
+            gymId: widget.gymId,
+            planId: _savedPlanId!,
+            mealLabel: meal.mealLabel,
+            mealTime: meal.mealTime,
+            guidance: meal.guidance,
+            sortOrder: sortOrder++,
+          );
+          final mealId = mealRow['id'] as String;
+          var foodOrder = 0;
+          for (final food in meal.foods) {
+            await repo.upsertDietFoodItem(
+              food.toRow(widget.gymId, mealId)..['sort_order'] = foodOrder++,
+            );
+          }
+        }
+      },
+    );
+    if (!mounted) return;
+    if (ok) {
+      await _reloadMeals();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Plan and generated meals saved')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openAiGenerate() async {
+    if (_generatingAi) return;
+    setState(() => _generatingAi = true);
+    final plan = await showAiGenerateDietDialog(
+      context,
+      ref,
+      gymId: widget.gymId,
+      categories: widget.categories,
+      categoryId: _categoryId,
+      initialCalories: int.tryParse(_caloriesController.text.trim()),
+    );
+    if (!mounted) return;
+    setState(() => _generatingAi = false);
+    if (plan != null) _applyAiPlan(plan);
+  }
+
+  void _applyAiPlan(Map<String, dynamic> plan) {
+    setState(() {
+      final name = plan['name'] as String?;
+      if (name != null && name.isNotEmpty) _nameController.text = name;
+      final description = plan['description'] as String?;
+      if (description != null) _descriptionController.text = description;
+      final calories = plan['target_calories'];
+      if (calories != null) _caloriesController.text = '$calories';
+      final protein = plan['target_protein_g'];
+      if (protein != null) _proteinController.text = '$protein';
+      final carbs = plan['target_carbs_g'];
+      if (carbs != null) _carbsController.text = '$carbs';
+      final fat = plan['target_fat_g'];
+      if (fat != null) _fatController.text = '$fat';
+      final hydration = plan['hydration_liters'];
+      if (hydration != null) _hydrationController.text = '$hydration';
+      final duration = plan['duration_days'];
+      if (duration != null) _durationController.text = '$duration';
+
+      final rawMeals = plan['meals'] as List<dynamic>? ?? [];
+      _meals = rawMeals.asMap().entries.map((entry) {
+        final meal = Map<String, dynamic>.from(entry.value as Map);
+        final rawFoods = meal['foods'] as List<dynamic>? ?? [];
+        return DietMealItem(
+          id: null,
+          mealLabel: meal['meal_label'] as String? ?? 'Meal ${entry.key + 1}',
+          mealTime: meal['meal_time'] as String?,
+          guidance: meal['guidance'] as String?,
+          sortOrder: entry.key,
+          foods: rawFoods.asMap().entries.map((foodEntry) {
+            final food = Map<String, dynamic>.from(foodEntry.value as Map);
+            return DietFoodItem(
+              foodName: food['food_name'] as String? ?? '',
+              portion: food['portion'] as String?,
+              calories: (food['calories'] as num?)?.toInt(),
+              proteinG: (food['protein_g'] as num?)?.toDouble(),
+              carbsG: (food['carbs_g'] as num?)?.toDouble(),
+              fatG: (food['fat_g'] as num?)?.toDouble(),
+              notes: food['notes'] as String?,
+              sortOrder: foodEntry.key,
+            );
+          }).toList(),
+        );
+      }).toList();
+    });
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          _planPersisted
+              ? 'Plan applied — tap Update plan to save meals'
+              : 'Plan applied — save the plan to store meals',
+        ),
+      ),
+    );
   }
 
   Future<void> _reloadMeals() async {
@@ -222,7 +341,10 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
   }
 
   Future<void> _deleteMeal(DietMealItem meal) async {
-    if (meal.id == null) return;
+    if (meal.id == null) {
+      setState(() => _meals = _meals.where((m) => m != meal).toList());
+      return;
+    }
     final confirm = await showConfirmDialog(
       context,
       title: 'Delete meal?',
@@ -267,6 +389,17 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
       appBar: AppBar(
         title: Text(widget.planId == null ? 'New diet plan' : 'Edit diet plan'),
         actions: [
+          IconButton(
+            tooltip: 'Generate diet plan',
+            onPressed: _generatingAi ? null : _openAiGenerate,
+            icon: _generatingAi
+                ? const SizedBox(
+                    width: 20,
+                    height: 20,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.auto_awesome_outlined),
+          ),
           TextButton(onPressed: _finish, child: const Text('Done')),
         ],
       ),
@@ -417,7 +550,9 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      'Save the plan above before adding meals.',
+                      _meals.isEmpty
+                          ? 'Save the plan above before adding meals, or generate a full plan from a template.'
+                          : 'Save the plan above to store ${_meals.length} generated meals.',
                       style: theme.textTheme.labelSmall?.copyWith(color: semantics.mutedText),
                     ),
                   ),

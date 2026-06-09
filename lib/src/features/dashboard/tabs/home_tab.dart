@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
+import 'package:gym_owner_app/src/features/ai/models/churn_risk_result.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/dashboard_sheets.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/offers_carousel.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/churn_radar_section.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/overview_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/section_header.dart';
 
@@ -17,6 +20,7 @@ class HomeTab extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final repo = ref.watch(gymRepositoryProvider);
+    final aiRepo = ref.watch(aiRepositoryProvider);
 
     return FutureBuilder<List<dynamic>>(
       future: Future.wait<dynamic>([
@@ -27,6 +31,7 @@ class HomeTab extends ConsumerWidget {
         repo.activePromotions(gymId),
         repo.promotions(gymId),
         repo.reports(gymId),
+        aiRepo.getChurnRisks(gymId),
       ]),
       builder: (context, snap) {
         if (!snap.hasData)
@@ -38,6 +43,7 @@ class HomeTab extends ConsumerWidget {
         final activePromotions = snap.data![4] as List<Map<String, dynamic>>;
         final allPromotions = snap.data![5] as List<Map<String, dynamic>>;
         final reports = snap.data![6] as Map<String, dynamic>;
+        final churnRisks = snap.data![7] as ChurnRiskResult;
         final dues = reports['dues'] as Map<String, dynamic>?;
         final pendingAmount = dues?['pending_amount'] ?? 0;
 
@@ -136,6 +142,7 @@ class HomeTab extends ConsumerWidget {
                 ),
               ],
             ),
+            ChurnRadarSection(gymId: gymId, result: churnRisks),
             if (activePromotions.isNotEmpty) ...[
               const SizedBox(height: 4),
               SectionHeader(

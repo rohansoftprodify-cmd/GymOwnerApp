@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/ai_analysis_section.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_provider.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/appearance_settings_card.dart';
@@ -23,6 +25,7 @@ class GymProfilePage extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final profileAsync = ref.watch(gymProfileProvider(gymId));
+    final analysisAsync = ref.watch(gymAnalysisProvider(gymId));
 
     return Scaffold(
       appBar: AppBar(
@@ -41,6 +44,23 @@ class GymProfilePage extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
             children: [
               GymDetailsCard(profile: profile),
+              analysisAsync.when(
+                loading: () => const Padding(
+                  padding: EdgeInsets.only(top: 20),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    ),
+                  ),
+                ),
+                error: (e, st) => const SizedBox.shrink(),
+                data: (analysis) => AiAnalysisSection(
+                  gymId: gymId,
+                  result: analysis,
+                ),
+              ),
               const SizedBox(height: 20),
               Text(
                 'Manage',
@@ -59,6 +79,20 @@ class GymProfilePage extends ConsumerWidget {
                 title: 'Members',
                 subtitle: 'Create accounts, assign plans & login access',
                 onTap: () => context.push('/members?gymId=$gymId'),
+              ),
+              const SizedBox(height: 10),
+              ProfileMenuCard(
+                icon: Icons.location_on_rounded,
+                title: 'Check-in location',
+                subtitle: 'Gym GPS coordinates & check-in radius',
+                onTap: () => context.push('/gym-check-in-location?gymId=$gymId'),
+              ),
+              const SizedBox(height: 10),
+              ProfileMenuCard(
+                icon: Icons.qr_code_2_rounded,
+                title: 'Check-in QR',
+                subtitle: 'Print entrance QR for member self check-in',
+                onTap: () => context.push('/gym-check-in-qr?gymId=$gymId'),
               ),
               const SizedBox(height: 10),
               ProfileMenuCard(

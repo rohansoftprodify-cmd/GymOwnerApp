@@ -557,6 +557,7 @@ class GymRepository {
     required DateTime startAt,
     required DateTime endAt,
     bool isActive = true,
+    Map<String, dynamic>? cardDesign,
   }) async {
     await _logApiCall(
       action: 'promotions.upsert',
@@ -568,6 +569,7 @@ class GymRepository {
         'start_at': startAt.toIso8601String(),
         'end_at': endAt.toIso8601String(),
         'is_active': isActive,
+        if (cardDesign != null) 'card_design': cardDesign,
       },
       run: () => _client.from('promotions').upsert(_upsertPayload({
         'id': id,
@@ -577,6 +579,7 @@ class GymRepository {
         'start_at': startAt.toIso8601String(),
         'end_at': endAt.toIso8601String(),
         'is_active': isActive,
+        if (cardDesign != null) 'card_design': cardDesign,
       })),
     );
   }
@@ -604,7 +607,7 @@ class GymRepository {
       run: () => _client
           .from('gyms')
           .select(
-            'id, name, email, phone, address, timezone, currency_code, setup_completed_at',
+            'id, name, email, phone, address, timezone, currency_code, setup_completed_at, latitude, longitude, check_in_radius_meters',
           )
           .eq('id', gymId)
           .maybeSingle(),
@@ -708,13 +711,35 @@ class GymRepository {
     );
   }
 
+  Future<void> updateGymCheckInLocation({
+    required String gymId,
+    required double latitude,
+    required double longitude,
+    required int checkInRadiusMeters,
+  }) async {
+    await _logApiCall(
+      action: 'gyms.update.check_in_location',
+      request: {
+        'id': gymId,
+        'latitude': latitude,
+        'longitude': longitude,
+        'check_in_radius_meters': checkInRadiusMeters,
+      },
+      run: () => _client.from('gyms').update({
+        'latitude': latitude,
+        'longitude': longitude,
+        'check_in_radius_meters': checkInRadiusMeters,
+      }).eq('id', gymId),
+    );
+  }
+
   Future<List<Map<String, dynamic>>> promotions(String gymId) async {
     final rows = await _logApiCall(
       action: 'promotions.select',
       request: {'gym_id': gymId},
       run: () => _client
           .from('promotions')
-          .select('id, title, description, start_at, end_at, is_active, created_at')
+          .select('id, title, description, start_at, end_at, is_active, created_at, card_design')
           .eq('gym_id', gymId)
           .order('is_active', ascending: false)
           .order('start_at', ascending: false),
@@ -730,7 +755,7 @@ class GymRepository {
       request: {'gym_id': gymId, 'now': now},
       run: () => _client
           .from('promotions')
-          .select('id, title, description, start_at, end_at, is_active')
+          .select('id, title, description, start_at, end_at, is_active, card_design')
           .eq('gym_id', gymId)
           .eq('is_active', true)
           .lte('start_at', now)
@@ -1121,6 +1146,15 @@ class GymRepository {
   String? productImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.trim().isEmpty) return null;
     return _client.storage.from(productImagesBucket).getPublicUrl(imagePath.trim());
+  }
+
+  Future<Map<String, dynamic>> getGymCheckInQr(String gymId) async {
+    final result = await _logApiCall(
+      action: 'rpc.get_gym_check_in_qr',
+      request: {'p_gym_id': gymId},
+      run: () => _client.rpc('get_gym_check_in_qr', params: {'p_gym_id': gymId}),
+    );
+    return Map<String, dynamic>.from(result as Map);
   }
 
   Future<Map<String, dynamic>> reports(String gymId) async {

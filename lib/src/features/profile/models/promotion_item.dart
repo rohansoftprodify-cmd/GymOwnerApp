@@ -1,3 +1,5 @@
+import 'package:gym_owner_app/src/features/profile/models/offer_card_design.dart';
+
 enum PromotionDisplayStatus {
   active,
   upcoming,
@@ -26,6 +28,7 @@ class PromotionItem {
     required this.startAt,
     required this.endAt,
     this.isActive = true,
+    this.cardDesign,
   });
 
   final String? id;
@@ -34,8 +37,10 @@ class PromotionItem {
   final DateTime startAt;
   final DateTime endAt;
   final bool isActive;
+  final OfferCardDesign? cardDesign;
 
   factory PromotionItem.fromMap(Map<String, dynamic> map) {
+    final rawDesign = map['card_design'];
     return PromotionItem(
       id: map['id'] as String?,
       title: map['title'] as String? ?? '',
@@ -43,6 +48,9 @@ class PromotionItem {
       startAt: DateTime.parse(map['start_at'] as String).toLocal(),
       endAt: DateTime.parse(map['end_at'] as String).toLocal(),
       isActive: map['is_active'] as bool? ?? true,
+      cardDesign: rawDesign is Map
+          ? OfferCardDesign.fromJson(Map<String, dynamic>.from(rawDesign))
+          : null,
     );
   }
 
@@ -61,5 +69,6 @@ class PromotionItem {
         'start_at': startAt.toUtc().toIso8601String(),
         'end_at': endAt.toUtc().toIso8601String(),
         'is_active': isActive,
+        if (cardDesign != null) 'card_design': cardDesign!.toJson(),
       };
 }
