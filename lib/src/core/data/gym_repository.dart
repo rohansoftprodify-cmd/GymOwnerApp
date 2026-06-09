@@ -973,7 +973,7 @@ class GymRepository {
     var query = _client
         .from('diet_plans')
         .select(
-          'id, name, description, image_path, target_calories, target_protein_g, target_carbs_g, target_fat_g, hydration_liters, duration_days, is_active, category_id, diet_plan_categories(name, goal_key)',
+          'id, name, description, image_path, target_calories, target_protein_g, target_carbs_g, target_fat_g, hydration_liters, duration_days, is_active, category_id, diet_plan_categories(name, goal_key), subscription_plan_diet_plans(subscription_plans(id, name))',
         )
         .eq('gym_id', gymId);
     if (categoryId != null) {
@@ -1026,6 +1026,45 @@ class GymRepository {
           .single(),
     );
     return row;
+  }
+
+  Future<List<String>> dietPlanSubscriptionPlanIds(
+    String gymId,
+    String dietPlanId,
+  ) async {
+    final rows = await _logApiCall(
+      action: 'subscription_plan_diet_plans.select',
+      request: {'gym_id': gymId, 'diet_plan_id': dietPlanId},
+      run: () => _client
+          .from('subscription_plan_diet_plans')
+          .select('subscription_plan_id')
+          .eq('gym_id', gymId)
+          .eq('diet_plan_id', dietPlanId),
+    );
+    return rows
+        .cast<Map<String, dynamic>>()
+        .map((row) => row['subscription_plan_id'] as String)
+        .toList();
+  }
+
+  Future<void> setDietPlanSubscriptionLinks({
+    required String gymId,
+    required String dietPlanId,
+    required List<String> subscriptionPlanIds,
+  }) async {
+    await _logApiCall(
+      action: 'set_diet_plan_subscription_links',
+      request: {
+        'gym_id': gymId,
+        'diet_plan_id': dietPlanId,
+        'subscription_plan_ids': subscriptionPlanIds,
+      },
+      run: () => _client.rpc('set_diet_plan_subscription_links', params: {
+        'p_gym_id': gymId,
+        'p_diet_plan_id': dietPlanId,
+        'p_subscription_plan_ids': subscriptionPlanIds,
+      }),
+    );
   }
 
   Future<void> setDietPlanActive({

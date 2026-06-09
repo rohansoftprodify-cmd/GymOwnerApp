@@ -291,6 +291,39 @@ class _PlanCard extends StatelessWidget {
                       ].join(' · '),
                       style: theme.textTheme.labelSmall?.copyWith(color: semantics.mutedText),
                     ),
+                    if (plan.isMembershipRestricted) ...[
+                      const SizedBox(height: 6),
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 4,
+                        children: [
+                          for (final name in plan.linkedMembershipPlanNames)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: colorScheme.secondary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                name,
+                                style: theme.textTheme.labelSmall?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  color: colorScheme.secondary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ] else ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        'All members',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantics.mutedText,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),

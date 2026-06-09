@@ -45,6 +45,7 @@ class DietPlanSummary {
     this.durationDays = 7,
     this.isActive = true,
     this.mealCount = 0,
+    this.linkedMembershipPlanNames = const [],
   });
 
   final String? id;
@@ -62,6 +63,9 @@ class DietPlanSummary {
   final int durationDays;
   final bool isActive;
   final int mealCount;
+  final List<String> linkedMembershipPlanNames;
+
+  bool get isMembershipRestricted => linkedMembershipPlanNames.isNotEmpty;
 
   DietGoalInfo? get goalInfo => DietGoalInfo.forKey(goalKey);
 
@@ -70,6 +74,15 @@ class DietPlanSummary {
     String? Function(String? path)? imageUrlResolver,
   }) {
     final cat = map['diet_plan_categories'] as Map<String, dynamic>? ?? const {};
+    final rawLinks = map['subscription_plan_diet_plans'] as List<dynamic>? ?? [];
+    final linkedNames = rawLinks
+        .cast<Map<String, dynamic>>()
+        .map((link) {
+          final plan = link['subscription_plans'] as Map<String, dynamic>?;
+          return plan?['name'] as String?;
+        })
+        .whereType<String>()
+        .toList();
     return DietPlanSummary(
       id: map['id'] as String?,
       name: map['name'] as String? ?? '',
@@ -86,6 +99,7 @@ class DietPlanSummary {
       durationDays: map['duration_days'] as int? ?? 7,
       isActive: map['is_active'] as bool? ?? true,
       mealCount: map['meal_count'] as int? ?? 0,
+      linkedMembershipPlanNames: linkedNames,
     );
   }
 }

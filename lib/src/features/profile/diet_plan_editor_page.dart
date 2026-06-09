@@ -7,6 +7,7 @@ import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/profile/models/diet_goal_info.dart';
 import 'package:gym_owner_app/src/features/profile/models/diet_models.dart';
+import 'package:gym_owner_app/src/features/profile/models/subscription_plan_item.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/ai_generate_diet_dialog.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/diet_goal_guide_card.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/diet_meal_editor_sheet.dart';
@@ -47,6 +48,8 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
   bool _saving = false;
   bool _generatingAi = false;
   List<DietMealItem> _meals = [];
+  List<SubscriptionPlanItem> _membershipPlans = [];
+  final Set<String> _linkedSubscriptionPlanIds = {};
 
   bool get _planPersisted => _savedPlanId != null;
 
@@ -79,32 +82,49 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
   }
 
   Future<void> _load() async {
-    if (widget.planId == null) {
-      setState(() => _loading = false);
-      return;
-    }
     try {
       final repo = ref.read(gymRepositoryProvider);
-      final plans = await repo.dietPlans(widget.gymId);
-      final plan = plans.where((p) => p['id'] == widget.planId).firstOrNull;
-      if (plan == null) throw Exception('Plan not found');
+      final membershipPlans = await repo.plans(widget.gymId);
+      List<DietMealItem> meals = [];
+      Set<String> linkedPlanIds = {};
 
-      final meals = await repo.dietMeals(widget.gymId, widget.planId!);
+      if (widget.planId != null) {
+        final plans = await repo.dietPlans(widget.gymId);
+        final plan = plans.where((p) => p['id'] == widget.planId).firstOrNull;
+        if (plan == null) throw Exception('Plan not found');
+
+        meals = (await repo.dietMeals(widget.gymId, widget.planId!))
+            .map(DietMealItem.fromMap)
+            .toList();
+        linkedPlanIds = (await repo.dietPlanSubscriptionPlanIds(
+          widget.gymId,
+          widget.planId!,
+        ))
+            .toSet();
+
+        if (!mounted) return;
+        setState(() {
+          _nameController.text = plan['name'] as String? ?? '';
+          _descriptionController.text = plan['description'] as String? ?? '';
+          _caloriesController.text = '${plan['target_calories'] ?? ''}';
+          _proteinController.text = '${plan['target_protein_g'] ?? ''}';
+          _carbsController.text = '${plan['target_carbs_g'] ?? ''}';
+          _fatController.text = '${plan['target_fat_g'] ?? ''}';
+          _hydrationController.text = '${plan['hydration_liters'] ?? 3}';
+          _durationController.text = '${plan['duration_days'] ?? 7}';
+          _categoryId = plan['category_id'] as String?;
+          _imageUrl = repo.dietImageUrl(plan['image_path'] as String?);
+          _isActive = plan['is_active'] as bool? ?? true;
+          _meals = meals;
+        });
+      }
+
       if (!mounted) return;
-
       setState(() {
-        _nameController.text = plan['name'] as String? ?? '';
-        _descriptionController.text = plan['description'] as String? ?? '';
-        _caloriesController.text = '${plan['target_calories'] ?? ''}';
-        _proteinController.text = '${plan['target_protein_g'] ?? ''}';
-        _carbsController.text = '${plan['target_carbs_g'] ?? ''}';
-        _fatController.text = '${plan['target_fat_g'] ?? ''}';
-        _hydrationController.text = '${plan['hydration_liters'] ?? 3}';
-        _durationController.text = '${plan['duration_days'] ?? 7}';
-        _categoryId = plan['category_id'] as String?;
-        _imageUrl = repo.dietImageUrl(plan['image_path'] as String?);
-        _isActive = plan['is_active'] as bool? ?? true;
-        _meals = meals.map(DietMealItem.fromMap).toList();
+        _membershipPlans = membershipPlans.map(SubscriptionPlanItem.fromMap).toList();
+        _linkedSubscriptionPlanIds
+          ..clear()
+          ..addAll(linkedPlanIds);
         _loading = false;
       });
     } catch (e) {
@@ -112,6 +132,16 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
       setState(() => _loading = false);
       await showAppErrorDialog(context, title: 'Load failed', error: e);
     }
+  }
+
+  void _toggleMembershipPlan(String planId) {
+    setState(() {
+      if (_linkedSubscriptionPlanIds.contains(planId)) {
+        _linkedSubscriptionPlanIds.remove(planId);
+      } else {
+        _linkedSubscriptionPlanIds.add(planId);
+      }
+    });
   }
 
   Future<void> _pickImage() async {
@@ -185,6 +215,12 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
             isActive: _isActive,
           );
         }
+
+        await repo.setDietPlanSubscriptionLinks(
+          gymId: widget.gymId,
+          dietPlanId: planId,
+          subscriptionPlanIds: _linkedSubscriptionPlanIds.toList(),
+        );
 
         _savedPlanId = planId;
       },
@@ -507,6 +543,43 @@ class _DietPlanEditorPageState extends ConsumerState<DietPlanEditorPage> {
                   label: 'Water (liters / day)',
                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 ),
+                const SizedBox(height: 12),
+                Text(
+                  'Membership plans (optional)',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _membershipPlans.isEmpty
+                      ? 'Create membership plans under Fee Structure to restrict this diet plan to specific subscriptions.'
+                      : 'Leave empty to show this diet plan to all members. Select one or more plans to include it only with those memberships.',
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: semantics.mutedText,
+                    height: 1.35,
+                  ),
+                ),
+                if (_membershipPlans.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 8,
+                    children: [
+                      for (final plan in _membershipPlans)
+                        if (plan.id != null)
+                          FilterChip(
+                            label: Text(plan.name),
+                            selected: _linkedSubscriptionPlanIds.contains(plan.id),
+                            onSelected: (_) => _toggleMembershipPlan(plan.id!),
+                            avatar: Icon(
+                              _linkedSubscriptionPlanIds.contains(plan.id)
+                                  ? Icons.card_membership_rounded
+                                  : Icons.card_membership_outlined,
+                              size: 18,
+                            ),
+                          ),
+                    ],
+                  ),
+                ],
                 if (widget.planId != null) ...[
                   const SizedBox(height: 8),
                   SwitchListTile(
