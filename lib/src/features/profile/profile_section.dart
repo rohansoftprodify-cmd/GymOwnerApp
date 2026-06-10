@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 enum ProfileSection {
+  workoutPlans,
   dietPlan,
   exercises,
   gymTiming,
@@ -9,6 +10,8 @@ enum ProfileSection {
 
   static ProfileSection? fromQuery(String? value) {
     switch (value) {
+      case 'workouts':
+        return ProfileSection.workoutPlans;
       case 'diet':
         return ProfileSection.dietPlan;
       case 'exercises':
@@ -26,6 +29,8 @@ enum ProfileSection {
 
   String get routeKey {
     switch (this) {
+      case ProfileSection.workoutPlans:
+        return 'workouts';
       case ProfileSection.dietPlan:
         return 'diet';
       case ProfileSection.exercises:
@@ -41,6 +46,8 @@ enum ProfileSection {
 
   String get title {
     switch (this) {
+      case ProfileSection.workoutPlans:
+        return 'Workout Plans';
       case ProfileSection.dietPlan:
         return 'Diet Plan';
       case ProfileSection.exercises:
@@ -56,6 +63,8 @@ enum ProfileSection {
 
   String get subtitle {
     switch (this) {
+      case ProfileSection.workoutPlans:
+        return 'AI coach — goal, age, equipment & experience';
       case ProfileSection.dietPlan:
         return 'Lose, gain & healthy meal plans';
       case ProfileSection.exercises:
@@ -71,6 +80,8 @@ enum ProfileSection {
 
   IconData get icon {
     switch (this) {
+      case ProfileSection.workoutPlans:
+        return Icons.sports_gymnastics_rounded;
       case ProfileSection.dietPlan:
         return Icons.restaurant_menu_rounded;
       case ProfileSection.exercises:

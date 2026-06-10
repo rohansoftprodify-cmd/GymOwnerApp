@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/attendance/attendance_utils.dart';
 import 'package:gym_owner_app/src/features/attendance/widgets/attendance_record_card.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/attendance_analytics_section.dart';
 
 class AttendanceTab extends ConsumerStatefulWidget {
   const AttendanceTab({super.key, required this.gymId});
@@ -42,9 +44,18 @@ class _AttendanceTabState extends ConsumerState<AttendanceTab> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final repo = ref.watch(gymRepositoryProvider);
+    final analyticsAsync = ref.watch(attendanceAnalyticsProvider(widget.gymId));
 
     return Column(
       children: [
+        analyticsAsync.when(
+          loading: () => const SizedBox.shrink(),
+          error: (e, st) => const SizedBox.shrink(),
+          data: (result) => AttendanceAnalyticsSection(
+            gymId: widget.gymId,
+            result: result,
+          ),
+        ),
         Padding(
           padding: const EdgeInsets.fromLTRB(0, 4, 0, 6),
           child: Row(

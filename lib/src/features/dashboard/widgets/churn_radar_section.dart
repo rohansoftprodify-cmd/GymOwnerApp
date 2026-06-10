@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/ai/models/churn_risk_result.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/section_header.dart';
@@ -28,28 +29,29 @@ class ChurnRadarSection extends StatelessWidget {
       children: [
         const SizedBox(height: 4),
         SectionHeader(
-          title: 'Churn radar',
-          actionLabel: 'View all',
-          onAction: () => _showAll(context),
+          title: 'Retention AI',
+          actionLabel: 'Full report',
+          onAction: () => context.push('/member-retention?gymId=$gymId'),
         ),
         const SizedBox(height: 4),
         Row(
           children: [
+            if (result.summary.critical > 0)
+              _SummaryChip(
+                label: 'Critical',
+                count: result.summary.critical,
+                color: semantics.accentCoral,
+              ),
+            if (result.summary.critical > 0) const SizedBox(width: 8),
             _SummaryChip(
               label: 'High',
               count: result.summary.high,
-              color: semantics.accentCoral,
+              color: Colors.orange.shade700,
             ),
             const SizedBox(width: 8),
             _SummaryChip(
               label: 'Medium',
               count: result.summary.medium,
-              color: Colors.orange.shade700,
-            ),
-            const SizedBox(width: 8),
-            _SummaryChip(
-              label: 'Low',
-              count: result.summary.low,
               color: Colors.amber.shade800,
             ),
           ],
@@ -73,12 +75,15 @@ class ChurnRadarSection extends StatelessWidget {
                 style: const TextStyle(fontWeight: FontWeight.w700),
               ),
               subtitle: Text(
-                member.reasons.join(' · '),
+                member.displayAlert,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
                 style: theme.textTheme.bodySmall,
               ),
-              trailing: _RiskBadge(level: member.riskLevel, score: member.riskScore),
+              trailing: _ProbabilityBadge(
+                probability: member.leaveProbability30d,
+                level: member.riskLevel,
+              ),
             ),
           ),
         ),
@@ -92,93 +97,6 @@ class ChurnRadarSection extends StatelessWidget {
         builder: (_) => MemberDetailPage(gymId: gymId, memberId: memberId),
       ),
     );
-  }
-
-  void _showAll(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (sheetContext) => DraggableScrollableSheet(
-        initialChildSize: 0.75,
-        minChildSize: 0.4,
-        maxChildSize: 0.95,
-        expand: false,
-        builder: (_, scrollController) {
-          final semantics = sheetContext.appColors;
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Column(
-              children: [
-                const SizedBox(height: 8),
-                Text(
-                  'At-risk members',
-                  style: Theme.of(sheetContext).textTheme.titleSmall?.copyWith(
-                        fontWeight: FontWeight.w800,
-                      ),
-                ),
-                const SizedBox(height: 12),
-                Expanded(
-                  child: ListView.separated(
-                    controller: scrollController,
-                    itemCount: result.members.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 8),
-                    itemBuilder: (_, index) {
-                      final member = result.members[index];
-                      return Card(
-                        child: ListTile(
-                          onTap: () {
-                            Navigator.of(sheetContext).pop();
-                            _openMember(context, member.memberId);
-                          },
-                          title: Text(
-                            member.fullName,
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              if (member.phone != null && member.phone!.isNotEmpty)
-                                Text(member.phone!),
-                              Text(member.reasons.join(' · ')),
-                              if (member.suggestedAction != null) ...[
-                                const SizedBox(height: 4),
-                                Text(
-                                  member.suggestedAction!,
-                                  style: TextStyle(
-                                    color: semantics.mutedText,
-                                    fontStyle: FontStyle.italic,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
-                          trailing: _RiskBadge(level: member.riskLevel, score: member.riskScore),
-                        ),
-                      );
-                    },
-                  ),
-                ),
-              ],
-            ),
-          );
-        },
-      ),
-    );
-  }
-
-  Color _riskColor(String level, AppSemanticColors semantics) {
-    switch (level) {
-      case 'high':
-        return semantics.accentCoral;
-      case 'medium':
-        return Colors.orange.shade700;
-      default:
-        return Colors.amber.shade800;
-    }
   }
 }
 
@@ -214,10 +132,7 @@ class _SummaryChip extends StatelessWidget {
                 color: color,
               ),
             ),
-            Text(
-              label,
-              style: Theme.of(context).textTheme.labelSmall,
-            ),
+            Text(label, style: Theme.of(context).textTheme.labelSmall),
           ],
         ),
       ),
@@ -225,31 +140,44 @@ class _SummaryChip extends StatelessWidget {
   }
 }
 
-class _RiskBadge extends StatelessWidget {
-  const _RiskBadge({required this.level, required this.score});
+class _ProbabilityBadge extends StatelessWidget {
+  const _ProbabilityBadge({required this.probability, required this.level});
 
+  final int probability;
   final String level;
-  final int score;
 
   @override
   Widget build(BuildContext context) {
     final color = switch (level) {
-      'high' => context.appColors.accentCoral,
-      'medium' => Colors.orange.shade700,
-      _ => Colors.amber.shade800,
+      'critical' => context.appColors.accentCoral,
+      'high' => Colors.orange.shade700,
+      'medium' => Colors.amber.shade800,
+      _ => Colors.grey.shade600,
     };
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(
-          '$score',
+          '$probability%',
           style: TextStyle(fontWeight: FontWeight.w800, color: color),
         ),
         Text(
           level.toUpperCase(),
-          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color),
+          style: Theme.of(context).textTheme.labelSmall?.copyWith(color: color, fontSize: 9),
         ),
       ],
     );
+  }
+}
+
+Color _riskColor(String level, AppSemanticColors semantics) {
+  switch (level) {
+    case 'critical':
+    case 'high':
+      return semantics.accentCoral;
+    case 'medium':
+      return Colors.orange.shade700;
+    default:
+      return Colors.amber.shade800;
   }
 }

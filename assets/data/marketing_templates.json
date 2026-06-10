@@ -1,0 +1,56 @@
+{
+  "festivals": {
+    "diwali": {
+      "label": "Diwali",
+      "emoji": "🪔",
+      "offer_hook": "Diwali Fitness Dhamaka",
+      "theme": "festival of lights, new beginnings, gift yourself health"
+    },
+    "holi": {
+      "label": "Holi",
+      "emoji": "🎨",
+      "offer_hook": "Holi Health Splash",
+      "theme": "colour, energy, celebrate with fitness"
+    },
+    "new_year": {
+      "label": "New Year",
+      "emoji": "🎉",
+      "offer_hook": "New Year, New You",
+      "theme": "fresh start, resolutions, transformation"
+    },
+    "republic_day": {
+      "label": "Republic Day",
+      "emoji": "🇮🇳",
+      "offer_hook": "Fit India Offer",
+      "theme": "patriotism, discipline, strength of the nation"
+    },
+    "independence_day": {
+      "label": "Independence Day",
+      "emoji": "🇮🇳",
+      "offer_hook": "Azadi from Excuses",
+      "theme": "freedom, discipline, personal strength"
+    },
+    "christmas": {
+      "label": "Christmas",
+      "emoji": "🎄",
+      "offer_hook": "Christmas Transformation Gift",
+      "theme": "gifting health, year-end fitness push"
+    },
+    "summer": {
+      "label": "Summer",
+      "emoji": "☀️",
+      "offer_hook": "Summer Shred Challenge",
+      "theme": "beach body, hydration, outdoor energy"
+    },
+    "general": {
+      "label": "Special",
+      "emoji": "💪",
+      "offer_hook": "Limited-Time Membership Offer",
+      "theme": "exclusive gym membership value"
+    }
+  },
+  "hashtag_sets": {
+    "instagram": ["#GymLife", "#FitnessMotivation", "#FitIndia", "#Workout", "#HealthyLifestyle"],
+    "festival": ["#FestivalOffer", "#GymOffer", "#MembershipDeal", "#FitnessGoals"]
+  }
+}

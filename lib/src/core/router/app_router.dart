@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/features/ai/ai_analysis_page.dart';
+import 'package:gym_owner_app/src/features/ai/attendance_analytics_page.dart';
+import 'package:gym_owner_app/src/features/ai/marketing_assistant_page.dart';
+import 'package:gym_owner_app/src/features/ai/member_retention_page.dart';
+import 'package:gym_owner_app/src/features/ai/sales_forecast_page.dart';
 import 'package:gym_owner_app/src/features/auth/login_page.dart';
 import 'package:gym_owner_app/src/features/attendance/attendance_history_page.dart';
 import 'package:gym_owner_app/src/features/attendance/gym_check_in_qr_page.dart';
@@ -11,6 +15,7 @@ import 'package:gym_owner_app/src/features/profile/gym_check_in_location_page.da
 import 'package:gym_owner_app/src/features/profile/gym_profile_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_section_page.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
+import 'package:gym_owner_app/src/features/profile/support_faqs_page.dart';
 import 'package:gym_owner_app/src/features/setup/gym_owner_setup_page.dart';
 import 'package:gym_owner_app/src/features/splash/splash_page.dart';
 
@@ -33,6 +38,56 @@ final appRouter = GoRouter(
           return const Scaffold(body: Center(child: Text('Missing gym id')));
         }
         return AiAnalysisPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/attendance-analytics',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return AttendanceAnalyticsPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/marketing-assistant',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return MarketingAssistantPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/support-faqs',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return SupportFaqsPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/member-retention',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return MemberRetentionPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/sales-forecast',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return SalesForecastPage(gymId: gymId);
       },
     ),
     GoRoute(

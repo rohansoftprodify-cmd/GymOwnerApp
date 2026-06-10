@@ -1196,6 +1196,268 @@ class GymRepository {
     return Map<String, dynamic>.from(result as Map);
   }
 
+  Future<void> ensureDefaultSupportFaqs(String gymId) async {
+    await _logApiCall(
+      action: 'rpc.ensure_default_gym_support_faqs',
+      request: {'p_gym_id': gymId},
+      run: () => _client.rpc('ensure_default_gym_support_faqs', params: {
+        'p_gym_id': gymId,
+      }),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> supportFaqs(
+    String gymId, {
+    String? category,
+  }) async {
+    var query = _client
+        .from('gym_support_faqs')
+        .select('id, category, question, answer, sort_order, is_active')
+        .eq('gym_id', gymId);
+    if (category != null) {
+      query = query.eq('category', category);
+    }
+    final rows = await _logApiCall(
+      action: 'gym_support_faqs.select',
+      request: {'gym_id': gymId, 'category': category},
+      run: () => query.order('category').order('sort_order').order('question'),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> upsertSupportFaq({
+    required String gymId,
+    String? id,
+    required String category,
+    required String question,
+    required String answer,
+    int sortOrder = 0,
+    bool isActive = true,
+  }) async {
+    await _logApiCall(
+      action: 'gym_support_faqs.upsert',
+      request: {'gym_id': gymId, 'category': category, 'question': question},
+      run: () => _client.from('gym_support_faqs').upsert(_upsertPayload({
+        'id': id,
+        'gym_id': gymId,
+        'category': category,
+        'question': question,
+        'answer': answer,
+        'sort_order': sortOrder,
+        'is_active': isActive,
+      })),
+    );
+  }
+
+  Future<void> setSupportFaqActive({
+    required String gymId,
+    required String faqId,
+    required bool isActive,
+  }) async {
+    await _logApiCall(
+      action: 'gym_support_faqs.update.is_active',
+      request: {'gym_id': gymId, 'id': faqId, 'is_active': isActive},
+      run: () => _client
+          .from('gym_support_faqs')
+          .update({'is_active': isActive})
+          .eq('gym_id', gymId)
+          .eq('id', faqId),
+    );
+  }
+
+  Future<void> deleteSupportFaq({
+    required String gymId,
+    required String faqId,
+  }) async {
+    await _logApiCall(
+      action: 'gym_support_faqs.delete',
+      request: {'gym_id': gymId, 'id': faqId},
+      run: () => _client
+          .from('gym_support_faqs')
+          .delete()
+          .eq('gym_id', gymId)
+          .eq('id', faqId),
+    );
+  }
+
+  Future<List<Map<String, dynamic>>> workoutPlanCategories(String gymId) async {
+    final rows = await _logApiCall(
+      action: 'workout_plan_categories.select',
+      request: {'gym_id': gymId},
+      run: () => _client
+          .from('workout_plan_categories')
+          .select('id, goal_key, name, description, coaching_tips, sort_order')
+          .eq('gym_id', gymId)
+          .order('sort_order', ascending: true),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> ensureDefaultWorkoutCategories(String gymId) async {
+    const defaults = [
+      ('weight_loss', 'Weight Loss', 'Fat loss and conditioning programs.', 'Mix strength with cardio; prioritize consistency.', 1),
+      ('muscle_gain', 'Muscle Gain', 'Hypertrophy and strength splits.', 'Progressive overload; protein and sleep matter.', 2),
+      ('healthy', 'Healthy Lifestyle', 'Balanced maintenance training.', 'Mix strength, mobility, and light cardio.', 3),
+    ];
+    for (final (key, name, description, tips, order) in defaults) {
+      await _logApiCall(
+        action: 'workout_plan_categories.upsert',
+        request: {'gym_id': gymId, 'goal_key': key},
+        run: () => _client.from('workout_plan_categories').upsert({
+          'gym_id': gymId,
+          'goal_key': key,
+          'name': name,
+          'description': description,
+          'coaching_tips': tips,
+          'sort_order': order,
+        }, onConflict: 'gym_id,goal_key'),
+      );
+    }
+  }
+
+  Future<List<Map<String, dynamic>>> workoutPlans(String gymId, {String? categoryId}) async {
+    var query = _client
+        .from('workout_plans')
+        .select(
+          'id, name, description, duration_weeks, sessions_per_week, experience_level, '
+          'equipment_hint, is_active, category_id, '
+          'workout_plan_categories(name, goal_key), '
+          'subscription_plan_workout_plans(subscription_plans(id, name))',
+        )
+        .eq('gym_id', gymId);
+    if (categoryId != null) query = query.eq('category_id', categoryId);
+    final rows = await _logApiCall(
+      action: 'workout_plans.select',
+      request: {'gym_id': gymId},
+      run: () => query.order('is_active', ascending: false).order('name', ascending: true),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> upsertWorkoutPlan({
+    required String gymId,
+    String? id,
+    required String categoryId,
+    required String name,
+    String? description,
+    int durationWeeks = 4,
+    int sessionsPerWeek = 3,
+    String experienceLevel = 'beginner',
+    String? equipmentHint,
+    int? memberAge,
+    double? memberWeightKg,
+    bool isActive = true,
+  }) async {
+    final row = await _logApiCall(
+      action: 'workout_plans.upsert',
+      request: {'gym_id': gymId, 'name': name},
+      run: () => _client
+          .from('workout_plans')
+          .upsert(_upsertPayload({
+            'id': id,
+            'gym_id': gymId,
+            'category_id': categoryId,
+            'name': name,
+            'description': description,
+            'duration_weeks': durationWeeks,
+            'sessions_per_week': sessionsPerWeek,
+            'experience_level': experienceLevel,
+            'equipment_hint': equipmentHint,
+            'member_age': memberAge,
+            'member_weight_kg': memberWeightKg,
+            'is_active': isActive,
+          }))
+          .select('id')
+          .single(),
+    );
+    return row;
+  }
+
+  Future<void> setWorkoutPlanActive({
+    required String gymId,
+    required String planId,
+    required bool isActive,
+  }) async {
+    await _client
+        .from('workout_plans')
+        .update({'is_active': isActive})
+        .eq('gym_id', gymId)
+        .eq('id', planId);
+  }
+
+  Future<List<Map<String, dynamic>>> workoutSessions(String gymId, String planId) async {
+    final rows = await _logApiCall(
+      action: 'workout_sessions.select',
+      request: {'gym_id': gymId, 'workout_plan_id': planId},
+      run: () => _client
+          .from('workout_sessions')
+          .select('id, day_label, day_number, guidance, sort_order, workout_session_exercises(*)')
+          .eq('gym_id', gymId)
+          .eq('workout_plan_id', planId)
+          .order('sort_order', ascending: true),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> upsertWorkoutSession({
+    required String gymId,
+    required String planId,
+    String? id,
+    required String dayLabel,
+    int dayNumber = 1,
+    String? guidance,
+    int sortOrder = 0,
+  }) async {
+    final row = await _logApiCall(
+      action: 'workout_sessions.upsert',
+      request: {'workout_plan_id': planId, 'day_label': dayLabel},
+      run: () => _client
+          .from('workout_sessions')
+          .upsert(_upsertPayload({
+            'id': id,
+            'gym_id': gymId,
+            'workout_plan_id': planId,
+            'day_label': dayLabel,
+            'day_number': dayNumber,
+            'guidance': guidance,
+            'sort_order': sortOrder,
+          }))
+          .select('id')
+          .single(),
+    );
+    return row;
+  }
+
+  Future<void> upsertWorkoutSessionExercise(Map<String, dynamic> row) async {
+    await _logApiCall(
+      action: 'workout_session_exercises.upsert',
+      request: row,
+      run: () => _client.from('workout_session_exercises').upsert(_upsertPayload(row)),
+    );
+  }
+
+  Future<void> applyWorkoutPlanSessions({
+    required String workoutPlanId,
+    required List<dynamic> sessions,
+  }) async {
+    await _client.rpc('apply_workout_plan_sessions', params: {
+      'p_workout_plan_id': workoutPlanId,
+      'p_sessions': sessions,
+    });
+  }
+
+  Future<void> setWorkoutPlanSubscriptionLinks({
+    required String gymId,
+    required String workoutPlanId,
+    required List<String> subscriptionPlanIds,
+  }) async {
+    await _client.rpc('set_workout_plan_subscription_links', params: {
+      'p_gym_id': gymId,
+      'p_workout_plan_id': workoutPlanId,
+      'p_subscription_plan_ids': subscriptionPlanIds,
+    });
+  }
+
   Future<Map<String, dynamic>> reports(String gymId) async {
     final attendanceRows = await _logApiCall(
       action: 'report_attendance_daily.select',

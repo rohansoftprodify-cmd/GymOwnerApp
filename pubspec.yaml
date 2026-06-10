@@ -60,6 +60,8 @@ flutter:
 
   assets:
     - assets/data/diet_templates.json
+    - assets/data/workout_templates.json
+    - assets/data/marketing_templates.json
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

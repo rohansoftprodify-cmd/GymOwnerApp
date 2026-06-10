@@ -1,0 +1,147 @@
+[
+  {
+    "key": "muscle_gain_beginner_dumbbells_4",
+    "goal_key": "muscle_gain",
+    "experience_level": "beginner",
+    "equipment_hint": "dumbbells only",
+    "sessions_per_week": 4,
+    "duration_weeks": 4,
+    "name": "4-Day Muscle Gain (Beginner · Dumbbells)",
+    "description": "Full-body split using dumbbells only. Focus on form, progressive overload, and 48h recovery between muscle groups.",
+    "sessions": [
+      {
+        "day_label": "Day 1 — Push",
+        "day_number": 1,
+        "guidance": "Warm up 5 min. Rest 60–90s between sets.",
+        "exercises": [
+          { "exercise_name": "Goblet squat", "sets": 3, "reps": 12, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell bench press", "sets": 3, "reps": 10, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell shoulder press", "sets": 3, "reps": 10, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell tricep kickback", "sets": 3, "reps": 12, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "day_label": "Day 2 — Pull",
+        "day_number": 2,
+        "guidance": "Control the eccentric on rows. Stretch lats after.",
+        "exercises": [
+          { "exercise_name": "Dumbbell Romanian deadlift", "sets": 3, "reps": 10, "rest_seconds": 90 },
+          { "exercise_name": "One-arm dumbbell row", "sets": 3, "reps": 10, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell bicep curl", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Dumbbell hammer curl", "sets": 3, "reps": 12, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "day_label": "Day 3 — Legs",
+        "day_number": 3,
+        "guidance": "Keep core braced on lunges. Hydrate well.",
+        "exercises": [
+          { "exercise_name": "Dumbbell walking lunge", "sets": 3, "reps": 10, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell sumo squat", "sets": 3, "reps": 12, "rest_seconds": 90 },
+          { "exercise_name": "Dumbbell calf raise", "sets": 4, "reps": 15, "rest_seconds": 45 },
+          { "exercise_name": "Dumbbell glute bridge", "sets": 3, "reps": 15, "rest_seconds": 60 }
+        ]
+      },
+      {
+        "day_label": "Day 4 — Upper pump",
+        "day_number": 4,
+        "guidance": "Lighter weight, higher reps. Active recovery day feel.",
+        "exercises": [
+          { "exercise_name": "Dumbbell floor press", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Dumbbell lateral raise", "sets": 3, "reps": 15, "rest_seconds": 60 },
+          { "exercise_name": "Dumbbell reverse fly", "sets": 3, "reps": 15, "rest_seconds": 60 },
+          { "exercise_name": "Dumbbell plank row", "sets": 3, "reps": 10, "rest_seconds": 60 }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "weight_loss_beginner_full_gym_3",
+    "goal_key": "weight_loss",
+    "experience_level": "beginner",
+    "equipment_hint": "full gym",
+    "sessions_per_week": 3,
+    "duration_weeks": 4,
+    "name": "3-Day Fat Loss Circuit (Beginner)",
+    "description": "Compound movements with short rest for calorie burn. Pair with a moderate calorie deficit.",
+    "sessions": [
+      {
+        "day_label": "Day 1 — Full body A",
+        "day_number": 1,
+        "guidance": "45–60 min including warm-up. Rest 45–60s.",
+        "exercises": [
+          { "exercise_name": "Leg press", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Lat pulldown", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Chest press machine", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Treadmill incline walk", "sets": 1, "reps": 15, "rest_seconds": 0, "notes": "15 minutes" }
+        ]
+      },
+      {
+        "day_label": "Day 2 — Cardio + core",
+        "day_number": 2,
+        "guidance": "Low impact OK. Focus on consistency.",
+        "exercises": [
+          { "exercise_name": "Stationary bike", "sets": 1, "reps": 20, "rest_seconds": 0, "notes": "20 min moderate" },
+          { "exercise_name": "Plank", "sets": 3, "reps": 45, "rest_seconds": 45, "notes": "45 seconds hold" },
+          { "exercise_name": "Cable wood chop", "sets": 3, "reps": 12, "rest_seconds": 45 }
+        ]
+      },
+      {
+        "day_label": "Day 3 — Full body B",
+        "day_number": 3,
+        "guidance": "Finish with 10 min brisk walk cooldown.",
+        "exercises": [
+          { "exercise_name": "Goblet squat", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Seated row", "sets": 3, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Dumbbell shoulder press", "sets": 3, "reps": 10, "rest_seconds": 60 },
+          { "exercise_name": "Stair climber", "sets": 1, "reps": 10, "rest_seconds": 0, "notes": "10 minutes" }
+        ]
+      }
+    ]
+  },
+  {
+    "key": "healthy_intermediate_bodyweight_3",
+    "goal_key": "healthy",
+    "experience_level": "intermediate",
+    "equipment_hint": "bodyweight only",
+    "sessions_per_week": 3,
+    "duration_weeks": 4,
+    "name": "3-Day Bodyweight Maintenance",
+    "description": "Balanced strength and mobility without equipment. Ideal for home or travel.",
+    "sessions": [
+      {
+        "day_label": "Day 1 — Strength",
+        "day_number": 1,
+        "guidance": "Modify push-ups on knees if needed.",
+        "exercises": [
+          { "exercise_name": "Push-up", "sets": 4, "reps": 12, "rest_seconds": 60 },
+          { "exercise_name": "Bodyweight squat", "sets": 4, "reps": 15, "rest_seconds": 60 },
+          { "exercise_name": "Glute bridge", "sets": 3, "reps": 15, "rest_seconds": 45 },
+          { "exercise_name": "Superman hold", "sets": 3, "reps": 30, "rest_seconds": 45, "notes": "30 sec hold" }
+        ]
+      },
+      {
+        "day_label": "Day 2 — Mobility",
+        "day_number": 2,
+        "guidance": "Move slowly. No rushing between stretches.",
+        "exercises": [
+          { "exercise_name": "Cat-cow stretch", "sets": 2, "reps": 10, "rest_seconds": 30 },
+          { "exercise_name": "Hip flexor stretch", "sets": 2, "reps": 45, "rest_seconds": 30, "notes": "45 sec each side" },
+          { "exercise_name": "World's greatest stretch", "sets": 2, "reps": 8, "rest_seconds": 30 },
+          { "exercise_name": "Child's pose", "sets": 2, "reps": 60, "rest_seconds": 30, "notes": "60 sec hold" }
+        ]
+      },
+      {
+        "day_label": "Day 3 — Conditioning",
+        "day_number": 3,
+        "guidance": "Work at sustainable pace. Stop if dizzy.",
+        "exercises": [
+          { "exercise_name": "Jumping jack", "sets": 3, "reps": 30, "rest_seconds": 45 },
+          { "exercise_name": "Mountain climber", "sets": 3, "reps": 20, "rest_seconds": 45 },
+          { "exercise_name": "Burpee (step-back)", "sets": 3, "reps": 8, "rest_seconds": 60 },
+          { "exercise_name": "Walking lunge", "sets": 3, "reps": 12, "rest_seconds": 60 }
+        ]
+      }
+    ]
+  }
+]

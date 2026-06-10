@@ -3,11 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/features/ai/models/churn_risk_result.dart';
+import 'package:gym_owner_app/src/features/ai/models/sales_forecast_result.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/dashboard_sheets.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/offers_carousel.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/churn_radar_section.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/sales_forecast_section.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/overview_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/section_header.dart';
 
@@ -32,6 +34,7 @@ class HomeTab extends ConsumerWidget {
         repo.promotions(gymId),
         repo.reports(gymId),
         aiRepo.getChurnRisks(gymId),
+        aiRepo.getSalesForecast(gymId),
       ]),
       builder: (context, snap) {
         if (!snap.hasData)
@@ -44,6 +47,7 @@ class HomeTab extends ConsumerWidget {
         final allPromotions = snap.data![5] as List<Map<String, dynamic>>;
         final reports = snap.data![6] as Map<String, dynamic>;
         final churnRisks = snap.data![7] as ChurnRiskResult;
+        final salesForecast = snap.data![8] as SalesForecastResult;
         final dues = reports['dues'] as Map<String, dynamic>?;
         final pendingAmount = dues?['pending_amount'] ?? 0;
 
@@ -143,6 +147,7 @@ class HomeTab extends ConsumerWidget {
               ],
             ),
             ChurnRadarSection(gymId: gymId, result: churnRisks),
+            SalesForecastSection(gymId: gymId, result: salesForecast),
             if (activePromotions.isNotEmpty) ...[
               const SizedBox(height: 4),
               SectionHeader(

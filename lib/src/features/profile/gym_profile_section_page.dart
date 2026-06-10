@@ -4,6 +4,7 @@ import 'package:gym_owner_app/src/core/data/gym_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/profile/diet_plans_page.dart';
+import 'package:gym_owner_app/src/features/profile/workout_plans_page.dart';
 import 'package:gym_owner_app/src/features/profile/exercises_page.dart';
 import 'package:gym_owner_app/src/features/profile/exclusive_offers_page.dart';
 import 'package:gym_owner_app/src/features/profile/fee_structure_page.dart';
@@ -36,7 +37,9 @@ class GymProfileSectionPage extends ConsumerWidget {
                       ? ExercisesPage(gymId: gymId)
                       : section == ProfileSection.dietPlan
                           ? DietPlansPage(gymId: gymId)
-                          : FutureBuilder<List<dynamic>>(
+                          : section == ProfileSection.workoutPlans
+                              ? WorkoutPlansPage(gymId: gymId)
+                              : FutureBuilder<List<dynamic>>(
         future: _loadData(repo),
         builder: (context, snap) {
           if (!snap.hasData) {
@@ -47,6 +50,7 @@ class GymProfileSectionPage extends ConsumerWidget {
             ProfileSection.feeStructure => const SizedBox.shrink(),
             ProfileSection.exclusiveOffers => const SizedBox.shrink(),
             ProfileSection.gymTiming => const SizedBox.shrink(),
+            ProfileSection.workoutPlans => const SizedBox.shrink(),
             ProfileSection.dietPlan => _PlaceholderBody(
                 icon: section.icon,
                 title: 'Add Diet Plan',
@@ -72,6 +76,8 @@ class GymProfileSectionPage extends ConsumerWidget {
         throw StateError('Exercises loads in ExercisesPage');
       case ProfileSection.dietPlan:
         throw StateError('Diet plans loads in DietPlansPage');
+      case ProfileSection.workoutPlans:
+        throw StateError('Workout plans loads in WorkoutPlansPage');
     }
   }
 }
