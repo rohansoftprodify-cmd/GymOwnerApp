@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_provider.dart';
+import 'package:gym_owner_app/src/features/profile/models/gym_amenity.dart';
 
 class GymDetailsCard extends StatelessWidget {
   const GymDetailsCard({super.key, required this.profile});
@@ -108,6 +109,49 @@ class GymDetailsCard extends StatelessWidget {
               icon: Icons.public_rounded,
               label: 'Timezone',
               value: profile.timezone!,
+            ),
+          ],
+          if (profile.amenities.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                'Facilities',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  color: semantics.mutedText,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: [
+                for (final amenity in gymAmenitiesFromKeys(profile.amenities))
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: colorScheme.primary.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(amenity.icon, size: 14, color: colorScheme.primary),
+                        const SizedBox(width: 4),
+                        Text(
+                          amenity.label,
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            fontWeight: FontWeight.w700,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ],
         ],

@@ -14,6 +14,7 @@ class GymProfileInfo {
     this.address,
     this.timezone,
     this.currencyCode,
+    this.amenities = const [],
   });
 
   final String gymId;
@@ -26,6 +27,7 @@ class GymProfileInfo {
   final String? address;
   final String? timezone;
   final String? currencyCode;
+  final List<String> amenities;
 }
 
 final gymProfileProvider = FutureProvider.family<GymProfileInfo?, String>((ref, gymId) async {
@@ -47,6 +49,11 @@ final gymProfileProvider = FutureProvider.family<GymProfileInfo?, String>((ref, 
   final profile = await repo.currentUserProfile();
   if (gym == null) return null;
 
+  final amenityRaw = gym['amenities'];
+  final amenities = amenityRaw is List
+      ? amenityRaw.map((e) => e.toString()).toList()
+      : <String>[];
+
   return GymProfileInfo(
     gymId: gymId,
     gymName: gym['name'] as String? ?? 'Gym',
@@ -58,5 +65,6 @@ final gymProfileProvider = FutureProvider.family<GymProfileInfo?, String>((ref, 
     address: gym['address'] as String?,
     timezone: gym['timezone'] as String?,
     currencyCode: gym['currency_code'] as String?,
+    amenities: amenities,
   );
 });

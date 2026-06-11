@@ -607,7 +607,7 @@ class GymRepository {
       run: () => _client
           .from('gyms')
           .select(
-            'id, name, email, phone, address, timezone, currency_code, setup_completed_at, latitude, longitude, check_in_radius_meters',
+            'id, name, email, phone, address, timezone, currency_code, setup_completed_at, latitude, longitude, check_in_radius_meters, amenities',
           )
           .eq('id', gymId)
           .maybeSingle(),
@@ -697,6 +697,17 @@ class GymRepository {
             rows,
             onConflict: 'gym_id,day_of_week',
           ),
+    );
+  }
+
+  Future<void> updateGymAmenities({
+    required String gymId,
+    required List<String> amenities,
+  }) async {
+    await _logApiCall(
+      action: 'gyms.update.amenities',
+      request: {'id': gymId, 'amenities': amenities},
+      run: () => _client.from('gyms').update({'amenities': amenities}).eq('id', gymId),
     );
   }
 

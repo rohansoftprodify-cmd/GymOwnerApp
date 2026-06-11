@@ -82,6 +82,13 @@ class GymProfilePage extends ConsumerWidget {
               ),
               const SizedBox(height: 10),
               ProfileMenuCard(
+                icon: Icons.category_rounded,
+                title: 'Gym facilities',
+                subtitle: 'Personal training, yoga, pool, spa & more — shown to members',
+                onTap: () => context.push('/gym-amenities?gymId=$gymId'),
+              ),
+              const SizedBox(height: 10),
+              ProfileMenuCard(
                 icon: Icons.location_on_rounded,
                 title: 'Check-in location',
                 subtitle: 'Gym GPS coordinates & check-in radius',
