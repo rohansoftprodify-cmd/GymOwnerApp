@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/ai/models/sales_forecast_result.dart';
+import 'package:gym_owner_app/src/features/ai/widgets/sales_forecast_revenue_chart.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/section_header.dart';
 import 'package:intl/intl.dart';
 
@@ -58,6 +59,14 @@ class SalesForecastSection extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: theme.textTheme.bodySmall?.copyWith(height: 1.35),
                   ),
+                  if (result.monthlyHistory.isNotEmpty ||
+                      result.monthlyForecast.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    SalesForecastSparkline(
+                      history: result.monthlyHistory,
+                      forecast: result.monthlyForecast,
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Wrap(
                     spacing: 8,

@@ -39,51 +39,64 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   Future<void> _signIn() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final proceed = await showConfirmDialog(
-      context,
-      title: 'Sign in on this device?',
-      message:
-          'This account can only be active on one device at a time. '
-          'Signing in here will log out any other device using this account.',
-      confirmLabel: 'Continue',
-      icon: Icons.devices_rounded,
-    );
-    if (!proceed || !mounted) return;
+    final email = _emailController.text.trim();
+    final sessionService = ref.read(singleSessionServiceProvider);
 
     setState(() {
       _loading = true;
       _error = null;
     });
+
     try {
+      final hasActiveElsewhere = await sessionService.emailHasActiveSession(email);
+      if (!mounted) return;
+
+      if (hasActiveElsewhere) {
+        setState(() => _loading = false);
+        final proceed = await showConfirmDialog(
+          context,
+          title: 'Already signed in elsewhere',
+          message:
+              'This account is active on another device. '
+              'Signing in here will log out that device.',
+          confirmLabel: 'Continue',
+          icon: Icons.devices_rounded,
+        );
+        if (!proceed || !mounted) return;
+        setState(() {
+          _loading = true;
+          _error = null;
+        });
+      }
+
       await Supabase.instance.client.auth.signInWithPassword(
-        email: _emailController.text.trim(),
+        email: email,
         password: _passwordController.text,
       );
 
-      final hadOtherDevice = await ref
-          .read(singleSessionServiceProvider)
-          .completeSignInAfterPassword();
+      final hadOtherDevice = await sessionService.completeSignInAfterPassword();
 
       if (!mounted) return;
 
-      await showDialog<void>(
-        context: context,
-        builder: (dialogContext) => AlertDialog(
-          icon: const Icon(Icons.check_circle_outline_rounded),
-          title: const Text('Signed in'),
-          content: Text(
-            hadOtherDevice
-                ? 'You are signed in on this device. The other device has been logged out.'
-                : 'You are signed in on this device.',
-          ),
-          actions: [
-            FilledButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('Continue'),
+      if (hadOtherDevice) {
+        await showDialog<void>(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            icon: const Icon(Icons.check_circle_outline_rounded),
+            title: const Text('Signed in'),
+            content: const Text(
+              'You are signed in on this device. The other device has been logged out.',
             ),
-          ],
-        ),
-      );
+            actions: [
+              FilledButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        );
+        if (!mounted) return;
+      }
 
       if (mounted) {
         await navigateAfterSignIn(context, ref);
@@ -138,18 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Container(
-                      padding: const EdgeInsets.all(14),
-                      decoration: BoxDecoration(
-                        color: colorScheme.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Icon(
-                        Icons.fitness_center_rounded,
-                        size: 40,
-                        color: colorScheme.primary,
-                      ),
-                    ),
+                    const AppLogo(size: 72, borderRadius: 18),
                     const SizedBox(height: 16),
                     AppText(
                       'Welcome back',

@@ -5,9 +5,12 @@ import 'package:gym_owner_app/src/core/auth/single_session_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/gym_setup_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
+import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/features/dashboard/tabs/attendance_tab.dart';
 import 'package:gym_owner_app/src/features/dashboard/tabs/home_tab.dart';
 import 'package:gym_owner_app/src/features/dashboard/tabs/products_tab.dart';
+import 'package:gym_owner_app/src/features/dashboard/tabs/transactions_tab.dart';
+import 'package:gym_owner_app/src/features/payments/gym_payment_qr_bottom_sheet.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class DashboardPage extends ConsumerStatefulWidget {
@@ -38,6 +41,11 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           label: 'Store',
           icon: Icons.inventory_2_outlined,
           selectedIcon: Icons.inventory_2_rounded,
+        ),
+        (
+          label: 'Transactions',
+          icon: Icons.receipt_long_outlined,
+          selectedIcon: Icons.receipt_long_rounded,
         ),
       ];
 
@@ -115,6 +123,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
           HomeTab(gymId: tenant.gymId),
           AttendanceTab(gymId: tenant.gymId),
           ProductsTab(gymId: tenant.gymId),
+          TransactionsTab(gymId: tenant.gymId),
         ];
 
         return Scaffold(
@@ -137,19 +146,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
                     children: [
-                      Container(
-                        width: 40,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: colorScheme.primary.withValues(alpha: 0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.fitness_center_rounded,
-                          color: colorScheme.primary,
-                          size: 22,
-                        ),
-                      ),
+                      const AppLogo(size: 40, borderRadius: 20),
                       const SizedBox(width: 12),
                       Expanded(
                         child: Column(
@@ -198,6 +195,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               ),
             ),
             actions: [
+              IconButton(
+                tooltip: 'Payment QR',
+                onPressed: () => showGymPaymentQrBottomSheet(
+                  context,
+                  gymId: tenant.gymId,
+                ),
+                icon: Icon(
+                  Icons.qr_code_2_rounded,
+                  color: colorScheme.primary,
+                  size: 22,
+                ),
+              ),
               IconButton(
                 onPressed: () async {
                   final shouldLogout = await showDialog<bool>(
@@ -271,7 +280,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: NavigationBar(
-                  height: 60,
+                  height: 64,
                   selectedIndex: _index,
                   elevation: 0,
                   backgroundColor: semantics.cardBackground,

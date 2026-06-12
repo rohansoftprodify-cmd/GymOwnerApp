@@ -79,7 +79,11 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                           final categoryName =
                               categoryNames[p['category_id'] as String?];
                           final stock = (p['stock_qty'] as num?)?.toInt() ?? 0;
-                          final price = (p['price'] as num?)?.toDouble() ?? 0;
+                          final actualPrice =
+                              (p['actual_price'] as num?)?.toDouble() ??
+                              (p['price'] as num?)?.toDouble() ??
+                              0;
+                          final offerPrice = (p['offer_price'] as num?)?.toDouble();
                           final imageUrl = repo.productImageUrl(
                             p['image_path'] as String?,
                           );
@@ -87,9 +91,17 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                           return ProductGridTile(
                             name: p['name'] as String? ?? '-',
                             categoryName: categoryName,
-                            price: price,
+                            actualPrice: actualPrice,
+                            offerPrice: offerPrice,
                             stockQty: stock,
                             imageUrl: imageUrl,
+                            onTap: () => showEditProductDialog(
+                              context,
+                              ref,
+                              widget.gymId,
+                              product: p,
+                              onSaved: _refresh,
+                            ),
                           );
                         },
                       ),

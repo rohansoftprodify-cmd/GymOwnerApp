@@ -4,6 +4,7 @@ import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/features/ai/models/sales_forecast_result.dart';
+import 'package:gym_owner_app/src/features/ai/widgets/sales_forecast_revenue_chart.dart';
 import 'package:intl/intl.dart';
 
 class SalesForecastPage extends ConsumerStatefulWidget {
@@ -145,7 +146,34 @@ class _SalesForecastPageState extends ConsumerState<SalesForecastPage> {
                       ),
                       const SizedBox(height: 16),
                       Text(
-                        'Revenue forecast',
+                        'Revenue chart',
+                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Actual membership revenue vs projected months',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantics.mutedText,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Container(
+                        padding: const EdgeInsets.fromLTRB(12, 14, 12, 10),
+                        decoration: BoxDecoration(
+                          color: semantics.cardBackground,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: theme.colorScheme.outlineVariant.withValues(alpha: 0.35),
+                          ),
+                        ),
+                        child: SalesForecastRevenueChart(
+                          history: result.monthlyHistory,
+                          forecast: result.monthlyForecast,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Monthly breakdown',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                       ),
                       const SizedBox(height: 8),
@@ -264,22 +292,6 @@ class _SalesForecastPageState extends ConsumerState<SalesForecastPage> {
                         text:
                             '${result.churn.membersChurnedLast30Days} churned last 30 days · ${result.churn.expiredNotRenewed90d} expired without renewal (90d)',
                       ),
-                      if (result.monthlyHistory.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          'Recent revenue history',
-                          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                        ),
-                        const SizedBox(height: 8),
-                        ...result.monthlyHistory.reversed.take(6).map(
-                          (m) => _BarRow(
-                            label: m.monthLabel,
-                            value: _money(m.membershipRevenue),
-                            progress: _historyProgress(m.membershipRevenue, result.monthlyHistory),
-                            color: theme.colorScheme.primary,
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 16),
                       Text(
                         'Planning insights',
@@ -311,11 +323,6 @@ class _SalesForecastPageState extends ConsumerState<SalesForecastPage> {
     );
   }
 
-  double _historyProgress(double value, List<MonthlyRevenueStat> history) {
-    final peak = history.map((h) => h.membershipRevenue).fold<double>(0, (a, b) => a > b ? a : b);
-    if (peak <= 0) return 0;
-    return (value / peak).clamp(0.0, 1.0);
-  }
 }
 
 class _SummaryCard extends StatelessWidget {
@@ -414,47 +421,6 @@ class _MetricTile extends StatelessWidget {
             ),
           ),
           Text(label, style: theme.textTheme.labelSmall),
-        ],
-      ),
-    );
-  }
-}
-
-class _BarRow extends StatelessWidget {
-  const _BarRow({
-    required this.label,
-    required this.value,
-    required this.progress,
-    required this.color,
-  });
-
-  final String label;
-  final String value;
-  final double progress;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(child: Text(label, style: theme.textTheme.bodyMedium)),
-              Text(value, style: theme.textTheme.labelSmall),
-            ],
-          ),
-          const SizedBox(height: 4),
-          LinearProgressIndicator(
-            value: progress.clamp(0.0, 1.0),
-            borderRadius: BorderRadius.circular(4),
-            minHeight: 6,
-            color: color,
-            backgroundColor: color.withValues(alpha: 0.12),
-          ),
         ],
       ),
     );

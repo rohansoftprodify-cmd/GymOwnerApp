@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/core/navigation/post_auth_navigation.dart';
+import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class SplashPage extends ConsumerStatefulWidget {
@@ -52,18 +53,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: onGradient.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Icon(
-                  Icons.fitness_center_rounded,
-                  size: 54,
-                  color: onGradient,
-                ),
-              ),
+              const AppLogo(size: 88, borderRadius: 20),
               const SizedBox(height: 16),
               Text(
                 'GYM OWNER',

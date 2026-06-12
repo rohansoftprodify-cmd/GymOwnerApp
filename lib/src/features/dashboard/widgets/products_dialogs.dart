@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/data/gym_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/product_form_page.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 Future<void> showAddCategoryDialog(
@@ -58,7 +60,6 @@ Future<void> showAddProductDialog(
   String? preselectedCategoryId,
   required VoidCallback onSaved,
 }) async {
-  final navigator = Navigator.of(context);
   final categories = await ref.read(gymRepositoryProvider).categories(gymId);
   if (!context.mounted) return;
 
@@ -71,94 +72,38 @@ Future<void> showAddProductDialog(
     return;
   }
 
-  final name = TextEditingController();
-  final price = TextEditingController(text: '0');
-  final stock = TextEditingController(text: '0');
-  String? categoryId =
-      preselectedCategoryId ?? categories.first['id'] as String;
-
-  await showDialog(
-    context: context,
-    builder: (_) => StatefulBuilder(
-      builder: (dialogContext, setDialogState) => AlertDialog(
-        icon: const Icon(Icons.add_business_rounded),
-        title: const Text('Add Product'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            DropdownButtonFormField<String>(
-              initialValue: categoryId,
-              decoration: const InputDecoration(
-                labelText: 'Category',
-                prefixIcon: Icon(Icons.category_outlined, size: 18),
-              ),
-              items: categories
-                  .map(
-                    (c) => DropdownMenuItem(
-                      value: c['id'] as String,
-                      child: Text(c['name'] as String? ?? '-'),
-                    ),
-                  )
-                  .toList(),
-              onChanged: (v) => setDialogState(() => categoryId = v),
-            ),
-            const SizedBox(height: 10),
-            AppTextField(
-              controller: name,
-              label: 'Product name',
-              prefixIcon: const Icon(Icons.inventory_2_outlined, size: 18),
-            ),
-            const SizedBox(height: 10),
-            AppTextField(
-              controller: price,
-              label: 'Price',
-              keyboardType: const TextInputType.numberWithOptions(
-                decimal: true,
-              ),
-              prefixIcon: const Icon(Icons.currency_rupee, size: 18),
-            ),
-            const SizedBox(height: 10),
-            AppTextField(
-              controller: stock,
-              label: 'Stock',
-              keyboardType: TextInputType.number,
-              prefixIcon: const Icon(Icons.layers_outlined, size: 18),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => navigator.pop(),
-            child: const Text('Cancel'),
-          ),
-          FilledButton(
-            onPressed: () async {
-              if (categoryId == null || name.text.trim().isEmpty) return;
-              final ok = await runWithErrorDialog(
-                dialogContext,
-                errorTitle: 'Could not save product',
-                action: () => ref
-                    .read(gymRepositoryProvider)
-                    .upsertProduct(
-                      gymId: gymId,
-                      categoryId: categoryId!,
-                      name: name.text.trim(),
-                      price: double.tryParse(price.text) ?? 0,
-                      stockQty: int.tryParse(stock.text) ?? 0,
-                    ),
-              );
-              if (!dialogContext.mounted) return;
-              if (ok) {
-                Navigator.of(dialogContext).pop();
-                runAfterDialogClosed(onSaved);
-              }
-            },
-            child: const Text('Save'),
-          ),
-        ],
+  final saved = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(
+      builder: (_) => ProductFormPage(
+        gymId: gymId,
+        categories: categories,
+        preselectedCategoryId: preselectedCategoryId,
       ),
     ),
   );
+  if (saved == true) onSaved();
+}
+
+Future<void> showEditProductDialog(
+  BuildContext context,
+  WidgetRef ref,
+  String gymId, {
+  required Map<String, dynamic> product,
+  required VoidCallback onSaved,
+}) async {
+  final categories = await ref.read(gymRepositoryProvider).categories(gymId);
+  if (!context.mounted) return;
+
+  final saved = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(
+      builder: (_) => ProductFormPage(
+        gymId: gymId,
+        categories: categories,
+        product: product,
+      ),
+    ),
+  );
+  if (saved == true) onSaved();
 }
 
 Future<void> showCreateSaleDialog(
@@ -189,7 +134,9 @@ Future<void> showCreateSaleDialog(
                 .map(
                   (p) => DropdownMenuItem(
                     value: p['id'] as String,
-                    child: Text(p['name'] as String),
+                    child: Text(
+                      '${p['name']} — ₹${GymRepository.productSellingPrice(p).toStringAsFixed(0)}',
+                    ),
                   ),
                 )
                 .toList(),

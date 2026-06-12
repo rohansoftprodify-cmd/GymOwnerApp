@@ -1,6 +1,33 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+/// Brand mark used in-app and as the launcher icon source.
+class AppLogo extends StatelessWidget {
+  const AppLogo({
+    super.key,
+    this.size = 48,
+    this.borderRadius = 14,
+  });
+
+  static const assetPath = 'assets/images/app_logo.png';
+
+  final double size;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: Image.asset(
+        assetPath,
+        width: size,
+        height: size,
+        fit: BoxFit.cover,
+      ),
+    );
+  }
+}
+
 class AppText extends StatelessWidget {
   const AppText(
     this.text, {

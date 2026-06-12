@@ -27,6 +27,23 @@ class SingleSessionService {
     _onTakeover = handler;
   }
 
+  /// Whether this email already has an active single-device app session (pre-login).
+  Future<bool> emailHasActiveSession(String email) async {
+    final trimmed = email.trim();
+    if (trimmed.isEmpty) return false;
+
+    try {
+      final result = await _client.rpc(
+        'member_email_has_active_session',
+        params: {'p_email': trimmed},
+      );
+      return result == true;
+    } catch (error) {
+      debugPrint('Active session pre-check failed: $error');
+      return false;
+    }
+  }
+
   /// Claims this device as the active session and signs out other devices.
   /// Returns whether another session existed before this login.
   Future<bool> completeSignInAfterPassword() async {

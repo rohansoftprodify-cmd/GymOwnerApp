@@ -454,33 +454,91 @@ class GymRepository {
     return rows.cast<Map<String, dynamic>>();
   }
 
-  Future<void> upsertProduct({
+  static double productSellingPrice(Map<String, dynamic> product) {
+    final offer = (product['offer_price'] as num?)?.toDouble();
+    final actual = (product['actual_price'] as num?)?.toDouble();
+    final legacy = (product['price'] as num?)?.toDouble();
+    if (offer != null) return offer;
+    if (actual != null) return actual;
+    return legacy ?? 0;
+  }
+
+  Future<Map<String, dynamic>> upsertProduct({
     required String gymId,
     required String categoryId,
     String? id,
     required String name,
-    required double price,
+    required double actualPrice,
+    double? offerPrice,
     required int stockQty,
+    String? description,
+    String? sku,
+    String? imagePath,
+    bool removeImage = false,
+    bool isActive = true,
   }) async {
-    await _logApiCall(
+    if (offerPrice != null && offerPrice > actualPrice) {
+      throw Exception('Offer price cannot exceed actual price');
+    }
+    final sellingPrice = offerPrice ?? actualPrice;
+
+    final row = await _logApiCall(
       action: 'products.upsert',
       request: {
         'id': id,
         'gym_id': gymId,
         'category_id': categoryId,
         'name': name,
-        'price': price,
+        'actual_price': actualPrice,
+        'offer_price': offerPrice,
+        'price': sellingPrice,
         'stock_qty': stockQty,
+        'description': description,
+        'sku': sku,
+        'image_path': imagePath,
+        'remove_image': removeImage,
+        'is_active': isActive,
       },
-      run: () => _client.from('products').upsert(_upsertPayload({
-        'id': id,
-        'gym_id': gymId,
-        'category_id': categoryId,
-        'name': name,
-        'price': price,
-        'stock_qty': stockQty,
-      })),
+      run: () => _client
+          .from('products')
+          .upsert(_upsertPayload({
+            'id': id,
+            'gym_id': gymId,
+            'category_id': categoryId,
+            'name': name,
+            'actual_price': actualPrice,
+            'offer_price': offerPrice,
+            'price': sellingPrice,
+            'stock_qty': stockQty,
+            if (description != null) 'description': description,
+            if (sku != null) 'sku': sku,
+            if (removeImage) 'image_path': null,
+            if (!removeImage && imagePath != null) 'image_path': imagePath,
+            'is_active': isActive,
+          }))
+          .select('id, name, image_path')
+          .single(),
     );
+    return row;
+  }
+
+  Future<String> uploadProductImage({
+    required String gymId,
+    required String productId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final path = '$gymId/$productId.jpg';
+    await _logApiCall(
+      action: 'storage.product-images.upload',
+      request: {'path': path, 'bytes': bytes.length},
+      run: () => _client.storage.from(productImagesBucket).uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: contentType),
+          ),
+    );
+    return path;
   }
 
   Future<List<Map<String, dynamic>>> products(String gymId, {String? categoryId}) async {
@@ -506,9 +564,13 @@ class GymRepository {
     final product = await _logApiCall(
       action: 'products.select.single',
       request: {'id': productId},
-      run: () => _client.from('products').select('price, stock_qty').eq('id', productId).single(),
+      run: () => _client
+          .from('products')
+          .select('price, actual_price, offer_price, stock_qty')
+          .eq('id', productId)
+          .single(),
     );
-    final unitPrice = (product['price'] as num).toDouble();
+    final unitPrice = productSellingPrice(product);
     final stockQty = product['stock_qty'] as int;
     if (qty > stockQty) {
       throw Exception('Not enough stock');
@@ -708,6 +770,130 @@ class GymRepository {
       action: 'gyms.update.amenities',
       request: {'id': gymId, 'amenities': amenities},
       run: () => _client.from('gyms').update({'amenities': amenities}).eq('id', gymId),
+    );
+  }
+
+  static const String paymentQrBucket = 'gym-payment-qr';
+
+  Future<List<Map<String, dynamic>>> gymPaymentOptions(String gymId) async {
+    final rows = await _logApiCall(
+      action: 'gym_payment_options.select',
+      request: {'gym_id': gymId},
+      run: () => _client
+          .from('gym_payment_options')
+          .select('id, label, upi_id, qr_image_path, sort_order, is_active, is_primary')
+          .eq('gym_id', gymId)
+          .eq('is_active', true)
+          .order('is_primary', ascending: false)
+          .order('sort_order', ascending: true)
+          .order('created_at', ascending: true),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> upsertGymPaymentOption({
+    required String gymId,
+    String? id,
+    String? label,
+    String? upiId,
+    String? qrImagePath,
+    required int sortOrder,
+  }) async {
+    final patch = <String, dynamic>{
+      'gym_id': gymId,
+      'label': label?.trim().isEmpty == true ? null : label?.trim(),
+      'upi_id': upiId?.trim().isEmpty == true ? null : upiId?.trim(),
+      'qr_image_path': qrImagePath?.trim().isEmpty == true ? null : qrImagePath?.trim(),
+      'sort_order': sortOrder,
+      'is_active': true,
+    };
+
+    if (id != null && id.isNotEmpty) {
+      final row = await _logApiCall(
+        action: 'gym_payment_options.update',
+        request: {'id': id, ...patch},
+        run: () => _client
+            .from('gym_payment_options')
+            .update(patch)
+            .eq('id', id)
+            .eq('gym_id', gymId)
+            .select('id, label, upi_id, qr_image_path, sort_order')
+            .single(),
+      );
+      return row;
+    }
+
+    final row = await _logApiCall(
+      action: 'gym_payment_options.insert',
+      request: patch,
+      run: () => _client
+          .from('gym_payment_options')
+          .insert(patch)
+          .select('id, label, upi_id, qr_image_path, sort_order')
+          .single(),
+    );
+    return row;
+  }
+
+  Future<void> deleteGymPaymentOption({
+    required String gymId,
+    required String id,
+  }) async {
+    await _logApiCall(
+      action: 'gym_payment_options.delete',
+      request: {'gym_id': gymId, 'id': id},
+      run: () => _client
+          .from('gym_payment_options')
+          .delete()
+          .eq('gym_id', gymId)
+          .eq('id', id),
+    );
+  }
+
+  Future<String> uploadPaymentQrImage({
+    required String gymId,
+    required String paymentOptionId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final path = '$gymId/$paymentOptionId.jpg';
+    await _logApiCall(
+      action: 'storage.gym-payment-qr.upload',
+      request: {'path': path},
+      run: () => _client.storage.from(paymentQrBucket).uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: contentType),
+          ),
+    );
+    return path;
+  }
+
+  String? paymentQrImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) return null;
+    return _client.storage.from(paymentQrBucket).getPublicUrl(imagePath.trim());
+  }
+
+  Future<void> setPrimaryGymPaymentOption({
+    required String gymId,
+    required String optionId,
+  }) async {
+    await _logApiCall(
+      action: 'gym_payment_options.clear_primary',
+      request: {'gym_id': gymId},
+      run: () => _client
+          .from('gym_payment_options')
+          .update({'is_primary': false})
+          .eq('gym_id', gymId),
+    );
+    await _logApiCall(
+      action: 'gym_payment_options.set_primary',
+      request: {'gym_id': gymId, 'id': optionId},
+      run: () => _client
+          .from('gym_payment_options')
+          .update({'is_primary': true})
+          .eq('gym_id', gymId)
+          .eq('id', optionId),
     );
   }
 
@@ -1467,6 +1653,59 @@ class GymRepository {
       'p_workout_plan_id': workoutPlanId,
       'p_subscription_plan_ids': subscriptionPlanIds,
     });
+  }
+
+  Future<List<Map<String, dynamic>>> transactionHistory(
+    String gymId, {
+    int limit = 100,
+  }) async {
+    final salesRows = await _logApiCall(
+      action: 'sales_orders.history.select',
+      request: {'gym_id': gymId, 'limit': limit},
+      run: () => _client
+          .from('sales_orders')
+          .select(
+            'id, total_amount, created_at, members(full_name), '
+            'sales_order_items(qty, line_total, products(name))',
+          )
+          .eq('gym_id', gymId)
+          .order('created_at', ascending: false)
+          .limit(limit),
+    );
+
+    final subscriptionRows = await _logApiCall(
+      action: 'member_subscriptions.history.select',
+      request: {'gym_id': gymId, 'limit': limit},
+      run: () => _client
+          .from('member_subscriptions')
+          .select(
+            'id, amount_paid, payment_status, created_at, members(full_name), '
+            'subscription_plans(name, price)',
+          )
+          .eq('gym_id', gymId)
+          .order('created_at', ascending: false)
+          .limit(limit),
+    );
+
+    final merged = <Map<String, dynamic>>[
+      for (final row in salesRows.cast<Map<String, dynamic>>())
+        {...row, '_kind': 'store_sale'},
+      for (final row in subscriptionRows.cast<Map<String, dynamic>>())
+        {...row, '_kind': 'membership'},
+    ];
+
+    merged.sort((a, b) {
+      final aAt = DateTime.tryParse(a['created_at'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      final bAt = DateTime.tryParse(b['created_at'] as String? ?? '') ??
+          DateTime.fromMillisecondsSinceEpoch(0);
+      return bAt.compareTo(aAt);
+    });
+
+    if (merged.length > limit) {
+      return merged.sublist(0, limit);
+    }
+    return merged;
   }
 
   Future<Map<String, dynamic>> reports(String gymId) async {

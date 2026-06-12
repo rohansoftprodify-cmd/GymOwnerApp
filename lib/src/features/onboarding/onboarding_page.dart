@@ -49,14 +49,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primaryContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(Icons.fitness_center_rounded, color: colorScheme.primary, size: 20),
-                  ),
+                  const AppLogo(size: 36, borderRadius: 10),
                   const SizedBox(width: 10),
                   AppText(
                     'Gym Owner',
