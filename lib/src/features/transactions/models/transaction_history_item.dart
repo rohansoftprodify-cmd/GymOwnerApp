@@ -46,9 +46,10 @@ class TransactionHistoryItem {
       kind: TransactionKind.storeSale,
       occurredAt: DateTime.parse(row['created_at'] as String).toLocal(),
       amount: (row['total_amount'] as num?)?.toDouble() ?? 0,
-      title: 'Store sale',
+      title: row['sold_by'] == null ? 'Member order' : 'Store sale',
       subtitle: itemLabels.isEmpty ? null : itemLabels.join(' · '),
       memberName: memberName,
+      paymentStatus: row['payment_status'] as String? ?? 'confirmed',
     );
   }
 

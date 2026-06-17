@@ -3,6 +3,7 @@ import 'package:gym_owner_app/src/core/domain/report_calculations.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/exclusive_offer_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/pending_payment_orders_list.dart';
 import 'package:intl/intl.dart';
 
 void showFeeListSheet(
@@ -233,4 +234,104 @@ void showPromotionsSheet(
       ),
     ),
   );
+}
+
+void showPendingOrdersSheet(
+  BuildContext context, {
+  required List<Map<String, dynamic>> orders,
+  required Future<void> Function(String orderId) onConfirm,
+  required Future<void> Function(String orderId) onReject,
+}) {
+  showModalBottomSheet<void>(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: Theme.of(context).colorScheme.surface,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+    ),
+    builder: (sheetContext) => _PendingOrdersSheet(
+      orders: orders,
+      onConfirm: onConfirm,
+      onReject: onReject,
+    ),
+  );
+}
+
+class _PendingOrdersSheet extends StatefulWidget {
+  const _PendingOrdersSheet({
+    required this.orders,
+    required this.onConfirm,
+    required this.onReject,
+  });
+
+  final List<Map<String, dynamic>> orders;
+  final Future<void> Function(String orderId) onConfirm;
+  final Future<void> Function(String orderId) onReject;
+
+  @override
+  State<_PendingOrdersSheet> createState() => _PendingOrdersSheetState();
+}
+
+class _PendingOrdersSheetState extends State<_PendingOrdersSheet> {
+  String? _processingOrderId;
+
+  Future<void> _handleConfirm(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await widget.onConfirm(orderId);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
+  }
+
+  Future<void> _handleReject(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await widget.onReject(orderId);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) => Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Column(
+          children: [
+            const SizedBox(height: 8),
+            Text(
+              'Pending payments',
+              style: Theme.of(context).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: widget.orders.isEmpty
+                  ? const Center(child: Text('No pending payments'))
+                  : ListView.separated(
+                      controller: scrollController,
+                      itemCount: widget.orders.length,
+                      separatorBuilder: (_, __) => const SizedBox(height: 8),
+                      itemBuilder: (_, i) => PendingOrderListTile(
+                        order: widget.orders[i],
+                        onConfirm: _handleConfirm,
+                        onReject: _handleReject,
+                        isProcessing: _processingOrderId == widget.orders[i]['id'],
+                      ),
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

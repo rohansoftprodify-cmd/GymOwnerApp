@@ -581,7 +581,13 @@ class GymRepository {
       request: {'gym_id': gymId, 'member_id': memberId, 'sold_by': soldBy, 'total_amount': total},
       run: () => _client
           .from('sales_orders')
-          .insert({'gym_id': gymId, 'member_id': memberId, 'sold_by': soldBy, 'total_amount': total})
+          .insert({
+            'gym_id': gymId,
+            'member_id': memberId,
+            'sold_by': soldBy,
+            'total_amount': total,
+            'payment_status': 'confirmed',
+          })
           .select('id')
           .single(),
     );
@@ -1655,6 +1661,43 @@ class GymRepository {
     });
   }
 
+  Future<List<Map<String, dynamic>>> pendingSalesOrders(
+    String gymId, {
+    int limit = 20,
+  }) async {
+    final rows = await _logApiCall(
+      action: 'sales_orders.pending.select',
+      request: {'gym_id': gymId, 'limit': limit},
+      run: () => _client
+          .from('sales_orders')
+          .select(
+            'id, total_amount, created_at, payment_status, members(full_name), '
+            'sales_order_items(qty, line_total, products(name))',
+          )
+          .eq('gym_id', gymId)
+          .eq('payment_status', 'pending')
+          .order('created_at', ascending: false)
+          .limit(limit),
+    );
+    return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> confirmSalesOrder(String orderId) async {
+    await _logApiCall(
+      action: 'sales_orders.confirm.rpc',
+      request: {'order_id': orderId},
+      run: () => _client.rpc('confirm_sales_order', params: {'p_order_id': orderId}),
+    );
+  }
+
+  Future<void> rejectSalesOrder(String orderId) async {
+    await _logApiCall(
+      action: 'sales_orders.reject.rpc',
+      request: {'order_id': orderId},
+      run: () => _client.rpc('reject_sales_order', params: {'p_order_id': orderId}),
+    );
+  }
+
   Future<List<Map<String, dynamic>>> transactionHistory(
     String gymId, {
     int limit = 100,
@@ -1665,7 +1708,7 @@ class GymRepository {
       run: () => _client
           .from('sales_orders')
           .select(
-            'id, total_amount, created_at, members(full_name), '
+            'id, total_amount, created_at, payment_status, sold_by, members(full_name), '
             'sales_order_items(qty, line_total, products(name))',
           )
           .eq('gym_id', gymId)

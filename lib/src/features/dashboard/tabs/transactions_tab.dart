@@ -6,7 +6,7 @@ import 'package:gym_owner_app/src/features/transactions/models/transaction_histo
 import 'package:gym_owner_app/src/features/transactions/widgets/transaction_tile.dart';
 import 'package:intl/intl.dart';
 
-enum _TransactionFilter { all, store, membership }
+enum _TransactionFilter { all, store, membership, pending }
 
 class TransactionsTab extends ConsumerStatefulWidget {
   const TransactionsTab({super.key, required this.gymId});
@@ -20,6 +20,7 @@ class TransactionsTab extends ConsumerStatefulWidget {
 class _TransactionsTabState extends ConsumerState<TransactionsTab> {
   _TransactionFilter _filter = _TransactionFilter.all;
   int _reloadToken = 0;
+  String? _processingOrderId;
 
   Future<List<TransactionHistoryItem>> _load() async {
     final rows = await ref.read(gymRepositoryProvider).transactionHistory(widget.gymId);
@@ -41,7 +42,20 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
         items.where((i) => i.kind == TransactionKind.storeSale).toList(),
       _TransactionFilter.membership =>
         items.where((i) => i.kind == TransactionKind.membership).toList(),
+      _TransactionFilter.pending => items
+          .where(
+            (i) =>
+                i.kind == TransactionKind.storeSale &&
+                i.paymentStatus?.toLowerCase() == 'pending',
+          )
+          .toList(),
     };
+  }
+
+  bool _countsTowardRevenue(TransactionHistoryItem item) {
+    if (item.kind == TransactionKind.membership) return true;
+    final status = item.paymentStatus?.toLowerCase() ?? 'confirmed';
+    return status == 'confirmed';
   }
 
   double _sumAmount(Iterable<TransactionHistoryItem> items) =>
@@ -55,6 +69,40 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
       map.putIfAbsent(key, () => []).add(item);
     }
     return map;
+  }
+
+  Future<void> _confirmOrder(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await ref.read(gymRepositoryProvider).confirmSalesOrder(orderId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment confirmed and stock updated')),
+      );
+      setState(() => _reloadToken++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
+  }
+
+  Future<void> _rejectOrder(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await ref.read(gymRepositoryProvider).rejectSalesOrder(orderId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order rejected')),
+      );
+      setState(() => _reloadToken++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
   }
 
   @override
@@ -73,13 +121,21 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
 
         final allItems = snap.data!;
         final filtered = _applyFilter(allItems);
+        final revenueItems = allItems.where(_countsTowardRevenue);
         final now = DateTime.now();
         final todayStart = DateTime(now.year, now.month, now.day);
         final monthStart = DateTime(now.year, now.month, 1);
 
-        final todayItems = allItems.where((i) => !i.occurredAt.isBefore(todayStart));
-        final monthItems = allItems.where((i) => !i.occurredAt.isBefore(monthStart));
+        final todayItems = revenueItems.where((i) => !i.occurredAt.isBefore(todayStart));
+        final monthItems = revenueItems.where((i) => !i.occurredAt.isBefore(monthStart));
         final grouped = _groupByDay(filtered);
+        final pendingCount = allItems
+            .where(
+              (i) =>
+                  i.kind == TransactionKind.storeSale &&
+                  i.paymentStatus?.toLowerCase() == 'pending',
+            )
+            .length;
 
         return RefreshIndicator(
           onRefresh: () async {
@@ -94,6 +150,7 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
                 todayTotal: _sumAmount(todayItems),
                 monthTotal: _sumAmount(monthItems),
                 transactionCount: allItems.length,
+                pendingCount: pendingCount,
               ),
               const SizedBox(height: 14),
               SingleChildScrollView(
@@ -117,6 +174,14 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
                       selected: _filter == _TransactionFilter.membership,
                       onTap: () => setState(() => _filter = _TransactionFilter.membership),
                     ),
+                    if (pendingCount > 0) ...[
+                      const SizedBox(width: 8),
+                      _FilterChip(
+                        label: 'Pending ($pendingCount)',
+                        selected: _filter == _TransactionFilter.pending,
+                        onTap: () => setState(() => _filter = _TransactionFilter.pending),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -168,7 +233,13 @@ class _TransactionsTabState extends ConsumerState<TransactionsTab> {
                       ],
                     ),
                   ),
-                  for (final item in entry.value) TransactionTile(item: item),
+                  for (final item in entry.value)
+                    TransactionTile(
+                      item: item,
+                      onConfirmPayment: _confirmOrder,
+                      onRejectPayment: _rejectOrder,
+                      isProcessing: _processingOrderId == item.id,
+                    ),
                   const SizedBox(height: 8),
                 ],
             ],
@@ -184,11 +255,13 @@ class _SummaryStrip extends StatelessWidget {
     required this.todayTotal,
     required this.monthTotal,
     required this.transactionCount,
+    required this.pendingCount,
   });
 
   final double todayTotal;
   final double monthTotal;
   final int transactionCount;
+  final int pendingCount;
 
   @override
   Widget build(BuildContext context) {
@@ -228,6 +301,16 @@ class _SummaryStrip extends StatelessWidget {
               ),
             ],
           ),
+          if (pendingCount > 0) ...[
+            const SizedBox(height: 8),
+            Text(
+              '$pendingCount payment${pendingCount == 1 ? '' : 's'} awaiting confirmation',
+              style: theme.textTheme.labelSmall?.copyWith(
+                color: colorScheme.onPrimary.withValues(alpha: 0.9),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
           const SizedBox(height: 12),
           Row(
             children: [

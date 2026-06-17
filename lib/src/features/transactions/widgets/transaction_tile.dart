@@ -4,9 +4,22 @@ import 'package:gym_owner_app/src/features/transactions/models/transaction_histo
 import 'package:intl/intl.dart';
 
 class TransactionTile extends StatelessWidget {
-  const TransactionTile({super.key, required this.item});
+  const TransactionTile({
+    super.key,
+    required this.item,
+    this.onConfirmPayment,
+    this.onRejectPayment,
+    this.isProcessing = false,
+  });
 
   final TransactionHistoryItem item;
+  final Future<void> Function(String orderId)? onConfirmPayment;
+  final Future<void> Function(String orderId)? onRejectPayment;
+  final bool isProcessing;
+
+  bool get _isPendingStoreOrder =>
+      item.kind == TransactionKind.storeSale &&
+      (item.paymentStatus?.toLowerCase() == 'pending');
 
   @override
   Widget build(BuildContext context) {
@@ -73,10 +86,10 @@ class TransactionTile extends StatelessWidget {
                       label: isStore ? 'Store' : 'Membership',
                       color: accent,
                     ),
-                    if (item.paymentStatus != null) ...[
+                    if (_shouldShowPaymentStatus(item)) ...[
                       const SizedBox(width: 6),
                       _TypeChip(
-                        label: item.paymentStatus!.toUpperCase(),
+                        label: _paymentStatusLabel(item),
                         color: _paymentColor(item.paymentStatus!, semantics),
                       ),
                     ],
@@ -118,6 +131,39 @@ class TransactionTile extends StatelessWidget {
                     ),
                   ),
                 ],
+                if (_isPendingStoreOrder &&
+                    onConfirmPayment != null &&
+                    onRejectPayment != null) ...[
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: isProcessing ? null : () => onRejectPayment!(item.id),
+                          style: OutlinedButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                            foregroundColor: semantics.accentCoral,
+                          ),
+                          child: const Text('Reject'),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: FilledButton(
+                          onPressed: isProcessing ? null : () => onConfirmPayment!(item.id),
+                          style: FilledButton.styleFrom(visualDensity: VisualDensity.compact),
+                          child: isProcessing
+                              ? const SizedBox(
+                                  width: 16,
+                                  height: 16,
+                                  child: CircularProgressIndicator(strokeWidth: 2),
+                                )
+                              : const Text('Confirm'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
@@ -128,10 +174,28 @@ class TransactionTile extends StatelessWidget {
 
   static String _money(double value) => '₹${NumberFormat('#,##0').format(value.round())}';
 
+  static bool _shouldShowPaymentStatus(TransactionHistoryItem item) {
+    final status = item.paymentStatus?.toLowerCase();
+    if (status == null) return false;
+    if (item.kind == TransactionKind.membership) return true;
+    return status == 'pending' || status == 'rejected';
+  }
+
+  static String _paymentStatusLabel(TransactionHistoryItem item) {
+    final status = item.paymentStatus!.toLowerCase();
+    return switch (status) {
+      'pending' => 'AWAITING',
+      'confirmed' => 'CONFIRMED',
+      _ => item.paymentStatus!.toUpperCase(),
+    };
+  }
+
   static Color _paymentColor(String status, AppSemanticColors semantics) {
     return switch (status.toLowerCase()) {
-      'paid' => Colors.green.shade700,
+      'paid' || 'confirmed' => Colors.green.shade700,
       'partial' => Colors.orange.shade700,
+      'pending' => Colors.orange.shade800,
+      'rejected' => semantics.accentCoral,
       _ => semantics.accentCoral,
     };
   }

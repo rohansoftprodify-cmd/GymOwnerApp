@@ -13,6 +13,7 @@ import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list
 import 'package:gym_owner_app/src/features/dashboard/widgets/home_pulse_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/home_quick_actions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/home_welcome_banner.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/pending_payment_orders_list.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/offers_carousel.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/overview_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/sales_forecast_section.dart';
@@ -31,6 +32,7 @@ class HomeTab extends ConsumerStatefulWidget {
 class _HomeTabState extends ConsumerState<HomeTab> {
   static const _sectionGap = 20.0;
   int _refreshTick = 0;
+  String? _processingOrderId;
 
   Future<List<dynamic>> _loadHomeData() {
     final repo = ref.read(gymRepositoryProvider);
@@ -45,12 +47,47 @@ class _HomeTabState extends ConsumerState<HomeTab> {
       repo.reports(widget.gymId),
       aiRepo.getChurnRisks(widget.gymId),
       aiRepo.getSalesForecast(widget.gymId),
+      repo.pendingSalesOrders(widget.gymId),
     ]);
   }
 
   Future<void> _onRefresh() async {
     setState(() => _refreshTick++);
     await _loadHomeData();
+  }
+
+  Future<void> _confirmPendingOrder(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await ref.read(gymRepositoryProvider).confirmSalesOrder(orderId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment confirmed')),
+      );
+      setState(() => _refreshTick++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
+  }
+
+  Future<void> _rejectPendingOrder(String orderId) async {
+    setState(() => _processingOrderId = orderId);
+    try {
+      await ref.read(gymRepositoryProvider).rejectSalesOrder(orderId);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order rejected')),
+      );
+      setState(() => _refreshTick++);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+    } finally {
+      if (mounted) setState(() => _processingOrderId = null);
+    }
   }
 
   @override
@@ -79,6 +116,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         final reports = snap.data![6] as Map<String, dynamic>;
         final churnRisks = snap.data![7] as ChurnRiskResult;
         final salesForecast = snap.data![8] as SalesForecastResult;
+        final pendingOrders = snap.data![9] as List<Map<String, dynamic>>;
         final dues = reports['dues'] as Map<String, dynamic>?;
         final pendingAmount = dues?['pending_amount'] ?? 0;
 
@@ -234,6 +272,26 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 ),
                 const SizedBox(height: 6),
                 OffersCarousel(promotions: activePromotions),
+              ],
+              if (pendingOrders.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                SectionHeader(
+                  title: 'Pending payments',
+                  actionLabel: 'View all',
+                  onAction: () => showPendingOrdersSheet(
+                    context,
+                    orders: pendingOrders,
+                    onConfirm: _confirmPendingOrder,
+                    onReject: _rejectPendingOrder,
+                  ),
+                ),
+                const SizedBox(height: 6),
+                PendingPaymentOrdersList(
+                  orders: pendingOrders,
+                  onConfirm: _confirmPendingOrder,
+                  onReject: _rejectPendingOrder,
+                  processingOrderId: _processingOrderId,
+                ),
               ],
               if (pendingFees.isNotEmpty) ...[
                 const SizedBox(height: 4),
