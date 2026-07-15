@@ -17,16 +17,15 @@ class GymOwnerApp extends ConsumerWidget {
       themeMode: themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);
-        final currentScale = mediaQuery.textScaler.scale(1.0);
-        final compactScale = currentScale < 0.9
-            ? 0.9
-            : (currentScale > 0.95 ? 0.95 : currentScale);
+        final systemScale = mediaQuery.textScaler.scale(14) / 14;
+
         return MediaQuery(
           data: mediaQuery.copyWith(
-            textScaler: TextScaler.linear(compactScale),
+            textScaler: TextScaler.linear(systemScale * 1.04),
           ),
           child: SingleSessionGuard(
             child: child ?? const SizedBox.shrink(),

@@ -10,6 +10,7 @@ class MemberListItem {
     this.planName,
     this.endDate,
     this.paymentStatus,
+    this.avatarUrl,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class MemberListItem {
   final String? planName;
   final DateTime? endDate;
   final String? paymentStatus;
+  final String? avatarUrl;
 
   factory MemberListItem.fromMap(Map<String, dynamic> map) {
     final subs = (map['member_subscriptions'] as List<dynamic>? ?? [])
@@ -55,6 +57,7 @@ class MemberListItem {
       planName: plan?['name'] as String?,
       endDate: _parseDate(endRaw),
       paymentStatus: activeSub?['payment_status'] as String?,
+      avatarUrl: map['avatar_url'] as String?,
     );
   }
 

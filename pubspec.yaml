@@ -49,6 +49,7 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
   flutter_launcher_icons: ^0.14.4
+  flutter_native_splash: ^2.4.4
 
 flutter_launcher_icons:
   android: true
@@ -65,6 +66,13 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: assets/images/app_logo.png
+
+flutter_native_splash:
+  color: "#000000"
+  image: assets/images/app_logo.png
+  android: true
+  ios: true
+  web: false
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec

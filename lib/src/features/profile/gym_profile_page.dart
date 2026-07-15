@@ -5,6 +5,8 @@ import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_provider.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/appearance_settings_card.dart';
+import 'package:gym_owner_app/src/features/profile/widgets/delete_account_dialog.dart';
+import 'package:gym_owner_app/src/features/profile/widgets/delete_account_tile.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/profile_quick_actions.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/profile_section_group.dart';
 import 'package:gym_owner_app/src/features/profile/widgets/profile_settings_search_bar.dart';
@@ -139,7 +141,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
           ),
         ],
       ),
-      _ProfileSectionConfig(
+      /*_ProfileSectionConfig(
         title: 'AI intelligence',
         subtitle: 'Analytics, forecasts, and automation',
         icon: Icons.auto_awesome_outlined,
@@ -190,7 +192,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
             onTap: () => context.push('/ai-analysis?gymId=${widget.gymId}'),
           ),
         ],
-      ),
+      ),*/
       _ProfileSectionConfig(
         title: 'Member programs',
         subtitle: 'Workouts, diet, and exercise library',
@@ -361,7 +363,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                         context.push('/gym-details?gymId=${widget.gymId}'),
                   ),
                   const SizedBox(height: 14),
-                  ProfileQuickActions(
+                 /* ProfileQuickActions(
                     actions: [
                       ProfileQuickAction(
                         icon: Icons.people_alt_rounded,
@@ -387,7 +389,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 14),*/
                 ],
                 ProfileSettingsSearchBar(
                   controller: _searchController,
@@ -452,6 +454,15 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                           ),
                           const SizedBox(height: 10),
                           const AppearanceSettingsCard(),
+                          const SizedBox(height: 12),
+                          DeleteAccountTile(
+                            onTap: () => showDeleteAccountDialog(
+                              context,
+                              ref,
+                              app: 'owner',
+                              exitRoute: '/login',
+                            ),
+                          ),
                         ],
                       ),
                     ),

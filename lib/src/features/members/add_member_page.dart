@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -5,6 +7,7 @@ import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
+import 'package:gym_owner_app/src/core/ui/image_crop_page.dart';
 
 class AddMemberPage extends ConsumerStatefulWidget {
   const AddMemberPage({super.key, required this.gymId});
@@ -24,6 +27,18 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
   final _emergencyController = TextEditingController();
   final _notesController = TextEditingController();
   final _amountPaidController = TextEditingController(text: '0');
+  Uint8List? _avatarBytes;
+
+  Future<void> _pickAvatar() async {
+    final bytes = await pickAndCropImage(
+      context,
+      cropTitle: 'Crop profile picture',
+      aspectRatio: 1.0,
+    );
+    if (bytes != null) {
+      setState(() => _avatarBytes = bytes);
+    }
+  }
 
   List<Map<String, dynamic>> _plans = [];
   String? _planId;
@@ -103,6 +118,33 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         );
 
+        final memberMap = result['member'] as Map<String, dynamic>?;
+        if (memberMap != null) {
+          final memberId = memberMap['id'] as String;
+          if (_avatarBytes != null) {
+            final avatarPath = await repo.uploadMemberAvatar(
+              gymId: widget.gymId,
+              memberId: memberId,
+              bytes: _avatarBytes!,
+            );
+            await repo.upsertMember(
+              gymId: widget.gymId,
+              memberId: memberId,
+              fullName: _nameController.text.trim(),
+              phone: _phoneController.text.trim(),
+              email: _emailController.text.trim().isEmpty
+                  ? null
+                  : _emailController.text.trim(),
+              status: 'active',
+              emergencyContact: _emergencyController.text.trim().isEmpty
+                  ? null
+                  : _emergencyController.text.trim(),
+              notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+              avatarUrl: avatarPath,
+            );
+          }
+        }
+
         if (!mounted) return;
         final credentials = result['credentials'] as Map<String, dynamic>? ?? const {};
         await showDialog<void>(
@@ -168,6 +210,42 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             key: _formKey,
             child: Column(
               children: [
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
+                        child: _avatarBytes == null
+                            ? Icon(Icons.person_rounded, size: 50, color: theme.colorScheme.primary)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Material(
+                          color: theme.colorScheme.primary,
+                          elevation: 4,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _pickAvatar,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                size: 16,
+                                color: theme.colorScheme.onPrimary,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 20),
                 AppTextField(
                   controller: _nameController,
                   label: 'Full name',

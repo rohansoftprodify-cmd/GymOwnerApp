@@ -151,7 +151,7 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const AppLogo(size: 72, borderRadius: 18),
+                    const AppLogo(size: 100, borderRadius: 18),
                     const SizedBox(height: 16),
                     AppText(
                       'Welcome back',

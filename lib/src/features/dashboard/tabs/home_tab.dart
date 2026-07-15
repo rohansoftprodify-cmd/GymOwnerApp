@@ -122,8 +122,17 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
         final now = DateTime.now();
         final upcomingCutoff = now.add(const Duration(days: 15));
+        final leftMemberIds = members
+            .where((m) => (m['status'] as String? ?? '').toLowerCase() == 'left')
+            .map((m) => m['id'] as String)
+            .toSet();
+
         final pendingFees = subscriptions.where((s) {
           final status = (s['payment_status'] as String? ?? '').toLowerCase();
+          final mId = s['member_id'] as String?;
+          if (mId != null && leftMemberIds.contains(mId)) {
+            return false;
+          }
           return status == 'due' || status == 'partial';
         }).toList();
         final upcomingRenewals = subscriptions.where((s) {
@@ -131,6 +140,10 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           if (raw == null) return false;
           final endDate = DateTime.tryParse(raw);
           if (endDate == null) return false;
+          final mId = s['member_id'] as String?;
+          if (mId != null && leftMemberIds.contains(mId)) {
+            return false;
+          }
           return endDate.isAfter(now.subtract(const Duration(days: 1))) &&
               endDate.isBefore(upcomingCutoff);
         }).toList()
@@ -149,6 +162,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           final status = (s['status'] as String? ?? '').toLowerCase();
           return status == 'active';
         }).length;
+
+        final leftCount = members.where((m) => m['status'] == 'left').length;
 
         final money = NumberFormat('#,##0').format(pendingAmount);
 
@@ -189,12 +204,12 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   ),
                 ],
               ),
-              const SizedBox(height: _sectionGap),
+              /*const SizedBox(height: _sectionGap),
               HomePulseCard(
                 checkInsToday: todayAttendance,
                 activeMembers: activePlans,
                 pendingFeesCount: pendingFees.length,
-              ),
+              ),*/
               const SizedBox(height: _sectionGap),
               _SectionLabel(
                 title: 'Gym snapshot',
@@ -261,8 +276,27 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   ),
                 ],
               ),
-              ChurnRadarSection(gymId: widget.gymId, result: churnRisks),
-              SalesForecastSection(gymId: widget.gymId, result: salesForecast),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  Expanded(
+                    child: OverviewCard(
+                      title: 'Left persons',
+                      value: '$leftCount',
+                      icon: Icons.person_remove_rounded,
+                      color: colorScheme.outline,
+                      subtitle: 'Exited members',
+                      onTap: () => context.push('/members?gymId=${widget.gymId}'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: SizedBox.shrink(),
+                  ),
+                ],
+              ),
+              //ChurnRadarSection(gymId: widget.gymId, result: churnRisks),
+              //SalesForecastSection(gymId: widget.gymId, result: salesForecast),
               if (activePromotions.isNotEmpty) ...[
                 const SizedBox(height: 4),
                 SectionHeader(

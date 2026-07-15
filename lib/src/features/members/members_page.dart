@@ -72,58 +72,98 @@ class _MembersPageState extends ConsumerState<MembersPage> {
     final colorScheme = theme.colorScheme;
     final semantics = context.appColors;
 
-    return Stack(
-      children: [
-        _members.isEmpty && !_loading
-            ? Center(
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.people_outline_rounded, size: 48, color: colorScheme.primary),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No members yet',
-                        style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Create a member account with login credentials and assign a plan.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
-                      ),
-                    ],
-                  ),
+    final activeMembers = _members.where((m) => m.status == 'active').toList();
+    final inactiveMembers = _members.where((m) => m.status == 'inactive').toList();
+    final leftMembers = _members.where((m) => m.status == 'left').toList();
+
+    Widget buildList(List<MemberListItem> list, String emptyMessage) {
+      if (list.isEmpty) {
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people_outline_rounded, size: 48, color: colorScheme.primary),
+                const SizedBox(height: 12),
+                Text(
+                  'No members',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, 8, 16, 88),
-                itemCount: _members.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 10),
-                itemBuilder: (_, i) => _MemberCard(
-                  member: _members[i],
-                  onTap: () => _openDetail(_members[i]),
+                const SizedBox(height: 8),
+                Text(
+                  emptyMessage,
+                  textAlign: TextAlign.center,
+                  style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+      return ListView.separated(
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 88),
+        itemCount: list.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 10),
+        itemBuilder: (_, i) {
+          final member = list[i];
+          final avatarUrl = ref.read(gymRepositoryProvider).memberAvatarUrl(member.avatarUrl);
+          return _MemberCard(
+            member: member,
+            resolvedAvatarUrl: avatarUrl,
+            onTap: () => _openDetail(member),
+          );
+        },
+      );
+    }
+
+    return DefaultTabController(
+      length: 3,
+      child: Scaffold(
+        backgroundColor: Colors.transparent,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: TabBar(
+            labelColor: colorScheme.primary,
+            unselectedLabelColor: semantics.mutedText,
+            indicatorColor: colorScheme.primary,
+            dividerColor: Colors.transparent,
+            tabs: [
+              Tab(text: 'Active (${activeMembers.length})'),
+              Tab(text: 'Inactive (${inactiveMembers.length})'),
+              Tab(text: 'Left Gym (${leftMembers.length})'),
+            ],
+          ),
+        ),
+        body: Stack(
+          children: [
+            TabBarView(
+              children: [
+                buildList(activeMembers, 'No active members found in this gym.'),
+                buildList(inactiveMembers, 'No inactive members found in this gym.'),
+                buildList(leftMembers, 'No members marked as having left this gym.'),
+              ],
+            ),
+            if (_loading)
+              Positioned.fill(
+                child: ColoredBox(
+                  color: context.loadingScrimColor,
+                  child: const Center(child: CircularProgressIndicator()),
                 ),
               ),
-        if (_loading)
-          Positioned.fill(
-            child: ColoredBox(
-              color: context.loadingScrimColor,
-              child: const Center(child: CircularProgressIndicator()),
-            ),
-          ),
-        if (!_loading)
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: FloatingActionButton.extended(
-              onPressed: _openAddMember,
-              icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
-              label: const Text('Add member'),
-            ),
-          ),
-      ],
+            if (!_loading)
+              Positioned(
+                right: 16,
+                bottom: 16,
+                child: FloatingActionButton.extended(
+                  onPressed: _openAddMember,
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
+                  label: const Text('Add member'),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -131,10 +171,12 @@ class _MembersPageState extends ConsumerState<MembersPage> {
 class _MemberCard extends StatelessWidget {
   const _MemberCard({
     required this.member,
+    this.resolvedAvatarUrl,
     required this.onTap,
   });
 
   final MemberListItem member;
+  final String? resolvedAvatarUrl;
   final VoidCallback onTap;
 
   @override
@@ -160,10 +202,15 @@ class _MemberCard extends StatelessWidget {
             children: [
               CircleAvatar(
                 backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                child: Text(
-                  member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
-                  style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.w800),
-                ),
+                backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl!.isNotEmpty
+                    ? NetworkImage(resolvedAvatarUrl!)
+                    : null,
+                child: resolvedAvatarUrl == null || resolvedAvatarUrl!.isEmpty
+                    ? Text(
+                        member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
+                        style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.w800),
+                      )
+                    : null,
               ),
               const SizedBox(width: 12),
               Expanded(

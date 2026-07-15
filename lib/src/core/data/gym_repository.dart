@@ -56,6 +56,11 @@ class GymRepository {
     String? emergencyContact,
     String? notes,
     DateTime? dateOfBirth,
+    DateTime? leftAt,
+    String? leftMessage,
+    int? extraDays,
+    double? extraAmount,
+    String? avatarUrl,
   }) async {
     await _logApiCall(
       action: 'members.upsert',
@@ -71,6 +76,11 @@ class GymRepository {
         if (notes != null) 'notes': notes,
         if (dateOfBirth != null)
           'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
+        'left_at': leftAt?.toIso8601String(),
+        'left_message': leftMessage,
+        'extra_days': extraDays ?? 0,
+        'extra_amount': extraAmount ?? 0.0,
+        if (avatarUrl != null) 'avatar_url': avatarUrl,
       })),
     );
   }
@@ -82,7 +92,7 @@ class GymRepository {
       run: () => _client
           .from('members')
           .select(
-            'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
+            'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, left_at, left_message, extra_days, extra_amount, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
           )
           .eq('gym_id', gymId)
           .eq('id', memberId)
@@ -107,7 +117,7 @@ class GymRepository {
       run: () => _client
           .from('members')
           .select(
-            'id, full_name, email, phone, status, joined_on, user_id, member_subscriptions(id, start_date, end_date, payment_status, status, subscription_plans(name, price))',
+            'id, full_name, email, phone, status, joined_on, user_id, avatar_url, member_subscriptions(id, start_date, end_date, payment_status, status, subscription_plans(name, price))',
           )
           .eq('gym_id', gymId)
           .order('created_at', ascending: false),
@@ -252,6 +262,46 @@ class GymRepository {
         'p_gym_id': gymId,
         'p_action': action,
       }),
+    );
+  }
+
+  Future<void> logManualAttendance({
+    required String gymId,
+    required String memberId,
+    required DateTime checkInAt,
+    DateTime? checkOutAt,
+  }) async {
+    final userId = _client.auth.currentUser?.id;
+    await _logApiCall(
+      action: 'attendance_records.insert_manual',
+      request: {
+        'gym_id': gymId,
+        'member_id': memberId,
+        'check_in_at': checkInAt.toIso8601String(),
+        'check_out_at': checkOutAt?.toIso8601String(),
+      },
+      run: () => _client.from('attendance_records').insert({
+        'gym_id': gymId,
+        'member_id': memberId,
+        'check_in_at': checkInAt.toIso8601String(),
+        'check_out_at': checkOutAt?.toIso8601String(),
+        'marked_by': userId,
+        'check_in_method': 'staff',
+      }),
+    );
+  }
+
+  Future<void> updateCheckOutTime({
+    required String recordId,
+    required DateTime checkOutAt,
+  }) async {
+    await _logApiCall(
+      action: 'attendance_records.update_checkout',
+      request: {'id': recordId, 'check_out_at': checkOutAt.toIso8601String()},
+      run: () => _client
+          .from('attendance_records')
+          .update({'check_out_at': checkOutAt.toIso8601String()})
+          .eq('id', recordId),
     );
   }
 
@@ -1388,6 +1438,32 @@ class GymRepository {
   String? productImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.trim().isEmpty) return null;
     return _client.storage.from(productImagesBucket).getPublicUrl(imagePath.trim());
+  }
+
+  static const String memberAvatarsBucket = 'member-avatars';
+
+  Future<String> uploadMemberAvatar({
+    required String gymId,
+    required String memberId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final path = '$gymId/$memberId.jpg';
+    await _logApiCall(
+      action: 'storage.member-avatars.upload',
+      request: {'path': path, 'bytes': bytes.length},
+      run: () => _client.storage.from(memberAvatarsBucket).uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: contentType),
+          ),
+    );
+    return path;
+  }
+
+  String? memberAvatarUrl(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) return null;
+    return _client.storage.from(memberAvatarsBucket).getPublicUrl(imagePath.trim());
   }
 
   Future<Map<String, dynamic>> getGymCheckInQr(String gymId) async {
