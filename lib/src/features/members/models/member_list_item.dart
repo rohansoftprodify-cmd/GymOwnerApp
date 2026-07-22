@@ -10,6 +10,9 @@ class MemberListItem {
     this.planName,
     this.endDate,
     this.paymentStatus,
+    this.imagePath,
+    this.planPrice,
+    this.amountPaid,
   });
 
   final String id;
@@ -22,6 +25,9 @@ class MemberListItem {
   final String? planName;
   final DateTime? endDate;
   final String? paymentStatus;
+  final String? imagePath;
+  final double? planPrice;
+  final double? amountPaid;
 
   factory MemberListItem.fromMap(Map<String, dynamic> map) {
     final subs = (map['member_subscriptions'] as List<dynamic>? ?? [])
@@ -55,6 +61,9 @@ class MemberListItem {
       planName: plan?['name'] as String?,
       endDate: _parseDate(endRaw),
       paymentStatus: activeSub?['payment_status'] as String?,
+      imagePath: map['image_path'] as String?,
+      planPrice: (plan?['price'] as num?)?.toDouble(),
+      amountPaid: (activeSub?['amount_paid'] as num?)?.toDouble(),
     );
   }
 

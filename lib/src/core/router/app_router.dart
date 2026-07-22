@@ -160,9 +160,10 @@ final appRouter = GoRouter(
         if (gymId == null || gymId.isEmpty) {
           return const Scaffold(body: Center(child: Text('Missing gym id')));
         }
+        final status = state.uri.queryParameters['status'];
         return Scaffold(
           appBar: AppBar(title: const Text('Members')),
-          body: MembersPage(gymId: gymId),
+          body: MembersPage(gymId: gymId, initialStatus: status),
         );
       },
     ),

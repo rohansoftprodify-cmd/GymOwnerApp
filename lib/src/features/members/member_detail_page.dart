@@ -5,6 +5,7 @@ import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
+import 'package:gym_owner_app/src/core/ui/image_crop_page.dart';
 import 'package:gym_owner_app/src/features/members/models/member_detail.dart';
 import 'package:intl/intl.dart';
 
@@ -47,6 +48,8 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
   String? _subscriptionId;
   String _subscriptionStatus = 'active';
   int? _computedEndDays;
+  Uint8List? _imageBytes;
+  bool _clearImage = false;
 
   @override
   void dispose() {
@@ -122,6 +125,11 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     setState(() => _computedEndDays = days);
   }
 
+  DateTime? get _computedEndDate {
+    if (_computedEndDays == null) return null;
+    return _startDate.add(Duration(days: _computedEndDays!));
+  }
+
   Future<void> _pickStartDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -132,9 +140,24 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
-  DateTime? get _computedEndDate {
-    if (_computedEndDays == null) return null;
-    return _startDate.add(Duration(days: _computedEndDays!));
+  Future<void> _pickImage() async {
+    final bytes = await pickAndCropImage(
+      context,
+      cropTitle: 'Crop member photo',
+      aspectRatio: 1,
+    );
+    if (bytes == null || !mounted) return;
+    setState(() {
+      _imageBytes = bytes;
+      _clearImage = false;
+    });
+  }
+
+  void _removeImage() {
+    setState(() {
+      _imageBytes = null;
+      _clearImage = true;
+    });
   }
 
   Future<void> _save() async {
@@ -147,6 +170,17 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
       context,
       errorTitle: 'Save failed',
       action: () async {
+        String? newImagePath = _detail?.imagePath;
+        if (_clearImage) {
+          newImagePath = null;
+        } else if (_imageBytes != null) {
+          newImagePath = await repo.uploadMemberImage(
+            gymId: widget.gymId,
+            memberId: widget.memberId,
+            bytes: _imageBytes!,
+          );
+        }
+
         await repo.upsertMember(
           gymId: widget.gymId,
           memberId: widget.memberId,
@@ -158,6 +192,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
           status: _memberStatus,
           emergencyContact: _emergencyController.text.trim(),
           notes: _notesController.text.trim(),
+          imagePath: newImagePath,
         );
 
         await repo.upsertMemberSubscription(
@@ -302,6 +337,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     final semantics = context.appColors;
     final dateFormat = DateFormat.yMMMd();
     final detail = _detail!;
+    final repo = ref.read(gymRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -348,11 +384,161 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundImage: _imageBytes != null
+                              ? MemoryImage(_imageBytes!)
+                              : (!_clearImage && detail.imagePath != null && detail.imagePath!.isNotEmpty)
+                                  ? NetworkImage(repo.memberImageUrl(detail.imagePath)!) as ImageProvider
+                                  : null,
+                          child: (_imageBytes == null && (_clearImage || detail.imagePath == null || detail.imagePath!.isEmpty))
+                              ? Icon(
+                                  Icons.add_a_photo_outlined,
+                                  size: 32,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
+                        ),
+                        if (_imageBytes != null || (!_clearImage && detail.imagePath != null && detail.imagePath!.isNotEmpty))
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onTap: _removeImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.error,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: theme.colorScheme.onError,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 Text(
                   'Profile',
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
+                if (detail.status == 'inactive') ...[
+                  Builder(builder: (ctx) {
+                    final double planPrice = detail.activeSubscription?.planPrice ?? 0;
+                    final double amountPaid = detail.activeSubscription?.amountPaid ?? 0;
+                    final double dues = planPrice - amountPaid;
+                    final hasDues = dues > 0 && detail.activeSubscription?.paymentStatus != 'paid';
+
+                    int extraDays = 0;
+                    if (detail.activeSubscription?.endDate != null) {
+                      final daysDiff = detail.activeSubscription!.endDate.difference(DateTime.now()).inDays;
+                      if (daysDiff > 0) {
+                        extraDays = daysDiff;
+                      }
+                    }
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.error.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.info_outline_rounded, color: theme.colorScheme.error, size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Inactive Member Status',
+                                style: theme.textTheme.titleSmall?.copyWith(
+                                  color: theme.colorScheme.error,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'This member left the gym. Outstanding status from last visit:',
+                            style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
+                          ),
+                          const SizedBox(height: 10),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: [
+                              if (extraDays > 0)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    '$extraDays Unused Days Remaining',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.primary,
+                                    ),
+                                  ),
+                                ),
+                              if (hasDues)
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: theme.colorScheme.error.withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'Total Dues Owed: \$${dues.toStringAsFixed(2)}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: theme.colorScheme.error,
+                                    ),
+                                  ),
+                                )
+                              else
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: semantics.accentLime.withValues(alpha: 0.2),
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Text(
+                                    'No Outstanding Dues',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.bold,
+                                      color: semantics.onAccentLime,
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
                 AppTextField(
                   controller: _nameController,
                   label: 'Full name',

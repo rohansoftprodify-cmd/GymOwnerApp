@@ -35,50 +35,37 @@ class _SplashPageState extends ConsumerState<SplashPage> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
-    final colorScheme = theme.colorScheme;
-    final onGradient = colorScheme.onPrimary;
     return Scaffold(
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              colorScheme.primary,
-              colorScheme.secondary,
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const AppLogo(size: 88, borderRadius: 20),
-              const SizedBox(height: 16),
-              Text(
-                'GYM OWNER',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  color: onGradient,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1.5,
-                ),
+      backgroundColor: Colors.black,
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const AppLogo(size: 88, borderRadius: 20),
+            const SizedBox(height: 16),
+            Text(
+              'GYM OWNER',
+              style: theme.textTheme.titleLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w800,
+                letterSpacing: 1.5,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Manage • Track • Grow',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  color: onGradient.withValues(alpha: 0.8),
-                  fontSize: 12,
-                ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Manage • Track • Grow',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: Colors.white.withValues(alpha: 0.8),
+                fontSize: 12,
               ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: 24,
-                height: 24,
-                child: CircularProgressIndicator(color: onGradient, strokeWidth: 2),
-              ),
-            ],
-          ),
+            ),
+            const SizedBox(height: 40),
+            const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            ),
+          ],
         ),
       ),
     );

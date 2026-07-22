@@ -2,93 +2,102 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 
-/// Wellness Hex brand + dashboard semantic accents.
+/// Monochrome white/black theme — light mode is white surfaces with black text;
+/// dark mode inverts to black surfaces with white text.
 class AppTheme {
-  static const Color wellnessBackground = Color(0xFFF8F9FA);
-  static const Color wellnessSurface = Color(0xFFFFFFFF);
-  static const Color wellnessPrimary = Color(0xFF20B2AA);
-  static const Color wellnessOnPrimary = Color(0xFFFFFFFF);
-  static const Color wellnessOnSurface = Color(0xFF0A2540);
+  static const Color lightBackground = Color(0xFFF8FAFC);
+  static const Color lightSurface = Color(0xFFFFFFFF);
+  static const Color lightPrimary = Color(0xFF1E40AF);
+  static const Color lightOnPrimary = Color(0xFFFFFFFF);
+  static const Color lightOnSurface = Color(0xFF0F172A);
 
-  static const Color darkBackground = Color(0xFF000000);
-  static const Color darkSurface = Color(0xFF1E1E1E);
-  static const Color darkOnSurface = Color(0xFFFFFFFF);
+  static const Color darkBackground = Color(0xFF0B0F19);
+  static const Color darkSurface = Color(0xFF131B2E);
+  static const Color darkPrimary = Color(0xFF3B82F6);
+  static const Color darkOnPrimary = Color(0xFFFFFFFF);
+  static const Color darkOnSurface = Color(0xFFF8FAFC);
 
-  static const Color _wellnessPrimaryDark = Color(0xFF178F89);
-  static const Color _wellnessOnSurfaceMuted = Color(0xFF4A6072);
-  static const Color _darkOnSurfaceMuted = Color(0xFF9AA8B5);
+  /// Legacy alias used by a few widgets.
+  static const Color wellnessPrimary = lightPrimary;
+  static const Color wellnessOnPrimary = lightOnPrimary;
+  static const Color wellnessOnSurface = lightOnSurface;
+  static const Color wellnessBackground = lightBackground;
+  static const Color wellnessSurface = lightSurface;
 
-  static ColorScheme get _wellnessLightScheme => const ColorScheme(
+  static const Color _lightMuted = Color(0xFF64748B);
+  static const Color _darkMuted = Color(0xFF94A3B8);
+
+  static ColorScheme get _lightScheme => const ColorScheme(
         brightness: Brightness.light,
-        primary: wellnessPrimary,
-        onPrimary: wellnessOnPrimary,
-        primaryContainer: Color(0xFFB2EBE8),
-        onPrimaryContainer: wellnessOnSurface,
-        secondary: _wellnessPrimaryDark,
-        onSecondary: wellnessOnPrimary,
-        secondaryContainer: Color(0xFFE0F5F4),
-        onSecondaryContainer: wellnessOnSurface,
-        tertiary: wellnessOnSurface,
-        onTertiary: wellnessOnPrimary,
-        tertiaryContainer: Color(0xFFE8EEF3),
-        onTertiaryContainer: wellnessOnSurface,
-        error: Color(0xFFC62828),
-        onError: wellnessOnPrimary,
-        surface: wellnessBackground,
-        onSurface: wellnessOnSurface,
-        onSurfaceVariant: _wellnessOnSurfaceMuted,
-        outline: Color(0xFFB0BEC5),
-        outlineVariant: Color(0xFFDDE3E8),
+        primary: lightPrimary,
+        onPrimary: lightOnPrimary,
+        primaryContainer: Color(0xFFEEF2FF),
+        onPrimaryContainer: Color(0xFF1E40AF),
+        secondary: Color(0xFF334155),
+        onSecondary: Color(0xFFFFFFFF),
+        secondaryContainer: Color(0xFFF1F5F9),
+        onSecondaryContainer: Color(0xFF1E293B),
+        tertiary: Color(0xFF0D9488),
+        onTertiary: Color(0xFFFFFFFF),
+        tertiaryContainer: Color(0xFFCCFBF1),
+        onTertiaryContainer: Color(0xFF115E59),
+        error: Color(0xFFEF4444),
+        onError: Color(0xFFFFFFFF),
+        surface: lightSurface,
+        onSurface: lightOnSurface,
+        onSurfaceVariant: _lightMuted,
+        outline: Color(0xFFE2E8F0),
+        outlineVariant: Color(0xFFF1F5F9),
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
-        inverseSurface: wellnessOnSurface,
-        onInverseSurface: wellnessSurface,
-        inversePrimary: Color(0xFF7AD9D2),
-        surfaceTint: wellnessPrimary,
-        surfaceContainerHighest: Color(0xFFEEF1F3),
+        inverseSurface: lightOnSurface,
+        onInverseSurface: lightSurface,
+        inversePrimary: darkPrimary,
+        surfaceTint: lightPrimary,
+        surfaceContainerHighest: Color(0xFFF1F5F9),
       );
 
-  static ColorScheme get _wellnessDarkScheme => const ColorScheme(
+  static ColorScheme get _darkScheme => const ColorScheme(
         brightness: Brightness.dark,
-        primary: wellnessPrimary,
-        onPrimary: wellnessOnPrimary,
-        primaryContainer: Color(0xFF0D4A47),
-        onPrimaryContainer: Color(0xFFB2EBE8),
-        secondary: Color(0xFF7AD9D2),
-        onSecondary: Color(0xFF000000),
-        secondaryContainer: Color(0xFF252525),
-        onSecondaryContainer: darkOnSurface,
-        tertiary: Color(0xFF7AD9D2),
-        onTertiary: Color(0xFF000000),
-        tertiaryContainer: Color(0xFF2A2A2A),
-        onTertiaryContainer: darkOnSurface,
-        error: Color(0xFFFF6B5B),
-        onError: Color(0xFF000000),
-        surface: darkBackground,
+        primary: darkPrimary,
+        onPrimary: darkOnPrimary,
+        primaryContainer: Color(0xFF1E3A8A),
+        onPrimaryContainer: Color(0xFFDBEAFE),
+        secondary: Color(0xFF94A3B8),
+        onSecondary: Color(0xFF0B0F19),
+        secondaryContainer: Color(0xFF1E293B),
+        onSecondaryContainer: Color(0xFFF1F5F9),
+        tertiary: Color(0xFF2DD4BF),
+        onTertiary: Color(0xFF0B0F19),
+        tertiaryContainer: Color(0xFF115E59),
+        onTertiaryContainer: Color(0xFFCCFBF1),
+        error: Color(0xFFF87171),
+        onError: Color(0xFF0B0F19),
+        surface: darkSurface,
         onSurface: darkOnSurface,
-        onSurfaceVariant: _darkOnSurfaceMuted,
-        outline: Color(0xFF3A3A3A),
-        outlineVariant: Color(0xFF2E2E2E),
+        onSurfaceVariant: _darkMuted,
+        outline: Color(0xFF334155),
+        outlineVariant: Color(0xFF1E293B),
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
         inverseSurface: darkOnSurface,
         onInverseSurface: darkBackground,
-        inversePrimary: wellnessPrimary,
-        surfaceTint: wellnessPrimary,
+        inversePrimary: lightPrimary,
+        surfaceTint: darkPrimary,
         surfaceContainerHighest: darkSurface,
       );
 
   static ThemeData get light => _buildTheme(
-        _wellnessLightScheme,
-        scaffoldColor: wellnessBackground,
-        appBarColor: wellnessSurface,
-        cardColor: wellnessSurface,
-        navBarColor: wellnessSurface,
+        _lightScheme,
+        scaffoldColor: lightBackground,
+        appBarColor: lightSurface,
+        cardColor: lightSurface,
+        navBarColor: lightSurface,
         semantics: AppSemanticColors.light,
       );
 
   static ThemeData get dark => _buildTheme(
-        _wellnessDarkScheme,
+        _darkScheme,
         scaffoldColor: darkBackground,
         appBarColor: darkBackground,
         cardColor: darkSurface,
@@ -138,8 +147,8 @@ class AppTheme {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
             color: isDark
-                ? scheme.outlineVariant.withValues(alpha: 0.35)
-                : scheme.outlineVariant.withValues(alpha: 0.6),
+                ? scheme.outlineVariant.withValues(alpha: 0.5)
+                : scheme.outline.withValues(alpha: 0.85),
           ),
         ),
       ),
@@ -173,7 +182,7 @@ class AppTheme {
         filled: true,
         fillColor: isDark
             ? semantics.cardBackground
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.5),
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
         isDense: true,
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         border: OutlineInputBorder(
@@ -191,7 +200,7 @@ class AppTheme {
       ),
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: navBarColor,
-        indicatorColor: scheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+        indicatorColor: scheme.primary.withValues(alpha: isDark ? 0.18 : 0.1),
         height: 60,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
@@ -244,9 +253,9 @@ class AppTheme {
       ),
       snackBarTheme: SnackBarThemeData(
         behavior: SnackBarBehavior.floating,
-        backgroundColor: isDark ? semantics.cardBackground : wellnessOnSurface,
+        backgroundColor: isDark ? darkPrimary : lightPrimary,
         contentTextStyle: TextStyle(
-          color: isDark ? scheme.onSurface : wellnessOnPrimary,
+          color: isDark ? darkOnPrimary : lightOnPrimary,
         ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
@@ -254,8 +263,8 @@ class AppTheme {
       chipTheme: ChipThemeData(
         backgroundColor: isDark
             ? scheme.surfaceContainerHighest
-            : scheme.surfaceContainerHighest.withValues(alpha: 0.6),
-        selectedColor: scheme.primary.withValues(alpha: isDark ? 0.22 : 0.14),
+            : scheme.surfaceContainerHighest.withValues(alpha: 0.8),
+        selectedColor: scheme.primary.withValues(alpha: isDark ? 0.2 : 0.12),
         labelStyle: TextStyle(color: scheme.onSurface, fontSize: 12),
         secondaryLabelStyle: TextStyle(color: scheme.onSurfaceVariant, fontSize: 12),
         side: BorderSide(color: scheme.outlineVariant.withValues(alpha: 0.5)),

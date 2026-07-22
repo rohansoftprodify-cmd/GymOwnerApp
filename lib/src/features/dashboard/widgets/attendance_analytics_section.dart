@@ -30,8 +30,8 @@ class AttendanceAnalyticsSection extends StatelessWidget {
           actionLabel: 'Full report',
           onAction: () => context.push('/attendance-analytics?gymId=$gymId'),
         ),
-        //const SizedBox(height: 4),
-        /*Card(
+        const SizedBox(height: 4),
+        Card(
           clipBehavior: Clip.antiAlias,
           child: InkWell(
             onTap: () => context.push('/attendance-analytics?gymId=$gymId'),
@@ -88,7 +88,7 @@ class AttendanceAnalyticsSection extends StatelessWidget {
               ),
             ),
           ),
-        ),*/
+        ),
       ],
     );
   }

@@ -25,7 +25,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
   void initState() {
     super.initState();
     if (Supabase.instance.client.auth.currentSession != null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) => navigateAfterSignIn(context, ref));
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => navigateAfterSignIn(context, ref),
+      );
     }
   }
 
@@ -48,7 +50,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
     });
 
     try {
-      final hasActiveElsewhere = await sessionService.emailHasActiveSession(email);
+      final hasActiveElsewhere = await sessionService.emailHasActiveSession(
+        email,
+      );
       if (!mounted) return;
 
       if (hasActiveElsewhere) {
@@ -170,7 +174,10 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                     const SizedBox(height: 24),
 
                     AppSurfaceCard(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 24,
+                      ),
                       child: Form(
                         key: _formKey,
                         child: Column(
@@ -178,7 +185,9 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                           children: [
                             AppText(
                               'Login',
-                              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                              style: theme.textTheme.titleMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
                             ),
                             const SizedBox(height: 16),
                             AppTextField(
@@ -186,10 +195,17 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               label: 'Email',
                               keyboardType: TextInputType.emailAddress,
                               textInputAction: TextInputAction.next,
-                              prefixIcon: const Icon(Icons.email_outlined, size: 18),
+                              prefixIcon: const Icon(
+                                Icons.email_outlined,
+                                size: 18,
+                              ),
                               validator: (value) {
-                                if (value == null || value.isEmpty) return 'Enter email';
-                                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Enter email';
+                                }
+                                if (!RegExp(
+                                  r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                                ).hasMatch(value)) {
                                   return 'Enter valid email';
                                 }
                                 return null;
@@ -202,70 +218,95 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                               obscureText: _obscurePassword,
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _signIn(),
-                              prefixIcon: const Icon(Icons.lock_outline, size: 18),
+                              prefixIcon: const Icon(
+                                Icons.lock_outline,
+                                size: 18,
+                              ),
                               suffixIcon: IconButton(
                                 icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off : Icons.visibility,
+                                  _obscurePassword
+                                      ? Icons.visibility_off
+                                      : Icons.visibility,
                                   size: 18,
                                 ),
                                 onPressed: () {
-                                  setState(() => _obscurePassword = !_obscurePassword);
+                                  setState(
+                                    () => _obscurePassword = !_obscurePassword,
+                                  );
                                 },
                               ),
                               validator: (value) {
-                                if (value == null || value.isEmpty) return 'Enter password';
+                                if (value == null || value.isEmpty) {
+                                  return 'Enter password';
+                                }
                                 if (value.length < 6) return 'Min 6 characters';
                                 return null;
                               },
                             ),
-                              const SizedBox(height: 8),
-                              Align(
-                                alignment: Alignment.centerRight,
-                                child: TextButton(
-                                  onPressed: () {},
-                                  style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                                  child: const Text('Forgot password?', style: TextStyle(fontSize: 12)),
+                            const SizedBox(height: 8),
+                            Align(
+                              alignment: Alignment.centerRight,
+                              child: TextButton(
+                                onPressed: () {},
+                                style: TextButton.styleFrom(
+                                  visualDensity: VisualDensity.compact,
+                                ),
+                                child: const Text(
+                                  'Forgot password?',
+                                  style: TextStyle(fontSize: 12),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            if (_error != null) ...[
+                              Container(
+                                padding: const EdgeInsets.all(10),
+                                decoration: BoxDecoration(
+                                  color: colorScheme.errorContainer.withOpacity(
+                                    0.5,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  _error!,
+                                  style: TextStyle(
+                                    color: colorScheme.onErrorContainer,
+                                    fontSize: 11,
+                                  ),
+                                  textAlign: TextAlign.center,
                                 ),
                               ),
                               const SizedBox(height: 16),
-                              if (_error != null) ...[
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: colorScheme.errorContainer.withOpacity(0.5),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Text(
-                                    _error!,
-                                    style: TextStyle(color: colorScheme.onErrorContainer, fontSize: 11),
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ),
-                                const SizedBox(height: 16),
-                              ],
-                              AppPrimaryButton(
-                                label: 'Sign In',
-                                icon: Icons.login_rounded,
-                                onPressed: _signIn,
-                                isLoading: _loading,
-                              ),
                             ],
-                          ),
+                            AppPrimaryButton(
+                              label: 'Sign In',
+                              icon: Icons.login_rounded,
+                              onPressed: _signIn,
+                              isLoading: _loading,
+                            ),
+                          ],
                         ),
                       ),
+                    ),
                     const SizedBox(height: 24),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
                           "No account?",
-                          style: TextStyle(color: colorScheme.onSurfaceVariant, fontSize: 13),
+                          style: TextStyle(
+                            color: colorScheme.onSurfaceVariant,
+                            fontSize: 13,
+                          ),
                         ),
                         TextButton(
                           onPressed: () {},
                           child: const Text(
                             'Contact Admin',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 13,
+                            ),
                           ),
                         ),
                       ],

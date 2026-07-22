@@ -5,6 +5,7 @@ import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
+import 'package:gym_owner_app/src/core/ui/image_crop_page.dart';
 
 class AddMemberPage extends ConsumerStatefulWidget {
   const AddMemberPage({super.key, required this.gymId});
@@ -32,6 +33,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
   bool _loadingPlans = true;
   bool _saving = false;
   bool _obscurePassword = true;
+  Uint8List? _imageBytes;
 
   @override
   void initState() {
@@ -77,6 +79,20 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
+  Future<void> _pickImage() async {
+    final bytes = await pickAndCropImage(
+      context,
+      cropTitle: 'Crop member photo',
+      aspectRatio: 1,
+    );
+    if (bytes == null || !mounted) return;
+    setState(() => _imageBytes = bytes);
+  }
+
+  void _removeImage() {
+    setState(() => _imageBytes = null);
+  }
+
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _planId == null) return;
 
@@ -102,6 +118,29 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               : _emergencyController.text.trim(),
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         );
+
+        if (!mounted) return;
+        final memberObj = result['member'] as Map<String, dynamic>?;
+        final memberId = memberObj?['id'] as String?;
+
+        if (memberId != null && _imageBytes != null) {
+          try {
+            final path = await repo.uploadMemberImage(
+              gymId: widget.gymId,
+              memberId: memberId,
+              bytes: _imageBytes!,
+            );
+            await repo.upsertMember(
+              gymId: widget.gymId,
+              memberId: memberId,
+              fullName: _nameController.text.trim(),
+              phone: _phoneController.text.trim(),
+              imagePath: path,
+            );
+          } catch (photoError) {
+            debugPrint('Failed to upload member photo: $photoError');
+          }
+        }
 
         if (!mounted) return;
         final credentials = result['credentials'] as Map<String, dynamic>? ?? const {};
@@ -168,6 +207,50 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             key: _formKey,
             child: Column(
               children: [
+                GestureDetector(
+                  onTap: _pickImage,
+                  child: Center(
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 50,
+                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                          backgroundImage: _imageBytes != null
+                              ? MemoryImage(_imageBytes!)
+                              : null,
+                          child: _imageBytes == null
+                              ? Icon(
+                                  Icons.add_a_photo_outlined,
+                                  size: 32,
+                                  color: theme.colorScheme.primary,
+                                )
+                              : null,
+                        ),
+                        if (_imageBytes != null)
+                          Positioned(
+                            right: 0,
+                            bottom: 0,
+                            child: GestureDetector(
+                              onTap: _removeImage,
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(
+                                  color: theme.colorScheme.error,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.delete_outline,
+                                  size: 16,
+                                  color: theme.colorScheme.onError,
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 16),
                 AppTextField(
                   controller: _nameController,
                   label: 'Full name',

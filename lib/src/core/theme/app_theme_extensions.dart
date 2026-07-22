@@ -11,25 +11,27 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
   });
 
   final Color cardBackground;
+  /// Primary highlight — black in light mode, white in dark mode.
   final Color accentLime;
+  /// Destructive / error emphasis.
   final Color accentCoral;
   final Color onAccentLime;
   final Color mutedText;
 
   static const light = AppSemanticColors(
     cardBackground: Color(0xFFFFFFFF),
-    accentLime: Color(0xFFD4FF00),
-    accentCoral: Color(0xFFFF6B5B),
-    onAccentLime: Color(0xFF000000),
-    mutedText: Color(0xFF4A6072),
+    accentLime: Color(0xFF0D9488),
+    accentCoral: Color(0xFFEF4444),
+    onAccentLime: Color(0xFFFFFFFF),
+    mutedText: Color(0xFF64748B),
   );
 
   static const dark = AppSemanticColors(
-    cardBackground: Color(0xFF1E1E1E),
-    accentLime: Color(0xFFC6FF00),
-    accentCoral: Color(0xFFFF6B5B),
-    onAccentLime: Color(0xFF000000),
-    mutedText: Color(0xFF9AA8B5),
+    cardBackground: Color(0xFF131B2E),
+    accentLime: Color(0xFF2DD4BF),
+    accentCoral: Color(0xFFF87171),
+    onAccentLime: Color(0xFF0B0F19),
+    mutedText: Color(0xFF94A3B8),
   );
 
   @override

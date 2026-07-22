@@ -53,6 +53,7 @@ class MemberDetail {
     this.emergencyContact,
     this.notes,
     this.activeSubscription,
+    this.imagePath,
   });
 
   final String id;
@@ -66,6 +67,7 @@ class MemberDetail {
   final String? emergencyContact;
   final String? notes;
   final MemberSubscriptionDetail? activeSubscription;
+  final String? imagePath;
 
   factory MemberDetail.fromMap(Map<String, dynamic> map) {
     final subs = (map['member_subscriptions'] as List<dynamic>? ?? [])
@@ -98,6 +100,7 @@ class MemberDetail {
       notes: map['notes'] as String?,
       activeSubscription:
           activeSub == null ? null : MemberSubscriptionDetail.fromMap(activeSub),
+      imagePath: map['image_path'] as String?,
     );
   }
 

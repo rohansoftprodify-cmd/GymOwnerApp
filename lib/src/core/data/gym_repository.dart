@@ -1,11 +1,11 @@
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class GymRepository {
   GymRepository(this._client);
+
   final SupabaseClient _client;
 
   Future<T> _logApiCall<T>({
@@ -18,7 +18,9 @@ class GymRepository {
     try {
       final response = await run();
       final duration = DateTime.now().difference(startedAt).inMilliseconds;
-      debugPrint('[API][RES] $action <- ${_stringify(response)} (${duration}ms)');
+      debugPrint(
+        '[API][RES] $action <- ${_stringify(response)} (${duration}ms)',
+      );
       return response;
     } catch (error, stackTrace) {
       final duration = DateTime.now().difference(startedAt).inMilliseconds;
@@ -32,10 +34,14 @@ class GymRepository {
     if (value == null) return 'null';
     if (value is Map || value is List) {
       final encoded = jsonEncode(value);
-      return encoded.length > 1200 ? '${encoded.substring(0, 1200)}...(truncated)' : encoded;
+      return encoded.length > 1200
+          ? '${encoded.substring(0, 1200)}...(truncated)'
+          : encoded;
     }
     final text = value.toString();
-    return text.length > 1200 ? '${text.substring(0, 1200)}...(truncated)' : text;
+    return text.length > 1200
+        ? '${text.substring(0, 1200)}...(truncated)'
+        : text;
   }
 
   /// Omit null `id` so Postgres can apply `default gen_random_uuid()` on insert.
@@ -56,63 +62,160 @@ class GymRepository {
     String? emergencyContact,
     String? notes,
     DateTime? dateOfBirth,
+    String? imagePath,
+  }) async {
+    final payload = _upsertPayload({
+      'id': memberId,
+      'gym_id': gymId,
+      'full_name': fullName,
+      'phone': phone,
+      'email': email,
+      if (status != null) 'status': status,
+      if (emergencyContact != null)
+        'emergency_contact': emergencyContact,
+      if (notes != null) 'notes': notes,
+      if (dateOfBirth != null)
+        'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
+      'image_path': imagePath,
+    });
+
+    try {
+      await _logApiCall(
+        action: 'members.upsert',
+        request: {
+          'id': memberId,
+          'gym_id': gymId,
+          'full_name': fullName,
+          'phone': phone,
+          'email': email,
+          'image_path': imagePath,
+        },
+        run: () => _client.from('members').upsert(payload),
+      );
+    } catch (e) {
+      if (e is PostgrestException && e.message.contains('image_path')) {
+        payload.remove('image_path');
+        await _logApiCall(
+          action: 'members.upsert.fallback',
+          request: {
+            'id': memberId,
+            'gym_id': gymId,
+            'full_name': fullName,
+            'phone': phone,
+            'email': email,
+          },
+          run: () => _client.from('members').upsert(payload),
+        );
+        return;
+      }
+      rethrow;
+    }
+  }
+
+  Future<void> updateMemberStatus({
+    required String gymId,
+    required String memberId,
+    required String status,
+    String? notes,
   }) async {
     await _logApiCall(
-      action: 'members.upsert',
-      request: {'id': memberId, 'gym_id': gymId, 'full_name': fullName, 'phone': phone, 'email': email},
-      run: () => _client.from('members').upsert(_upsertPayload({
-        'id': memberId,
-        'gym_id': gymId,
-        'full_name': fullName,
-        'phone': phone,
-        'email': email,
-        if (status != null) 'status': status,
-        if (emergencyContact != null) 'emergency_contact': emergencyContact,
-        if (notes != null) 'notes': notes,
-        if (dateOfBirth != null)
-          'date_of_birth': dateOfBirth.toIso8601String().substring(0, 10),
-      })),
+      action: 'members.update_status',
+      request: {'id': memberId, 'gym_id': gymId, 'status': status, 'notes': notes},
+      run: () => _client
+          .from('members')
+          .update({
+            'status': status,
+            if (notes != null) 'notes': notes,
+          })
+          .eq('gym_id', gymId)
+          .eq('id', memberId),
     );
   }
 
-  Future<Map<String, dynamic>> memberDetail(String gymId, String memberId) async {
-    final row = await _logApiCall(
-      action: 'members.select.detail',
-      request: {'gym_id': gymId, 'id': memberId},
-      run: () => _client
-          .from('members')
-          .select(
-            'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
-          )
-          .eq('gym_id', gymId)
-          .eq('id', memberId)
-          .single(),
-    );
-    return row;
+  Future<Map<String, dynamic>> memberDetail(
+    String gymId,
+    String memberId,
+  ) async {
+    try {
+      final row = await _logApiCall(
+        action: 'members.select.detail',
+        request: {'gym_id': gymId, 'id': memberId},
+        run: () => _client
+            .from('members')
+            .select(
+              'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, image_path, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
+            )
+            .eq('gym_id', gymId)
+            .eq('id', memberId)
+            .single(),
+      );
+      return row;
+    } catch (e) {
+      if (e is PostgrestException && e.message.contains('image_path')) {
+        final row = await _logApiCall(
+          action: 'members.select.detail.fallback',
+          request: {'gym_id': gymId, 'id': memberId},
+          run: () => _client
+              .from('members')
+              .select(
+                'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
+              )
+              .eq('gym_id', gymId)
+              .eq('id', memberId)
+              .single(),
+        );
+        return row;
+      }
+      rethrow;
+    }
   }
 
   Future<List<Map<String, dynamic>>> members(String gymId) async {
     final rows = await _logApiCall(
       action: 'members.select',
       request: {'gym_id': gymId},
-      run: () => _client.from('members').select().eq('gym_id', gymId).order('created_at'),
+      run: () => _client
+          .from('members')
+          .select()
+          .eq('gym_id', gymId)
+          .order('created_at'),
     );
     return rows.cast<Map<String, dynamic>>();
   }
 
-  Future<List<Map<String, dynamic>>> membersWithSubscriptions(String gymId) async {
-    final rows = await _logApiCall(
-      action: 'members.select_with_subscriptions',
-      request: {'gym_id': gymId},
-      run: () => _client
-          .from('members')
-          .select(
-            'id, full_name, email, phone, status, joined_on, user_id, member_subscriptions(id, start_date, end_date, payment_status, status, subscription_plans(name, price))',
-          )
-          .eq('gym_id', gymId)
-          .order('created_at', ascending: false),
-    );
-    return rows.cast<Map<String, dynamic>>();
+  Future<List<Map<String, dynamic>>> membersWithSubscriptions(
+    String gymId,
+  ) async {
+    try {
+      final rows = await _logApiCall(
+        action: 'members.select_with_subscriptions',
+        request: {'gym_id': gymId},
+        run: () => _client
+            .from('members')
+            .select(
+              'id, full_name, email, phone, status, joined_on, user_id, image_path, member_subscriptions(id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(name, price))',
+            )
+            .eq('gym_id', gymId)
+            .order('created_at', ascending: false),
+      );
+      return rows.cast<Map<String, dynamic>>();
+    } catch (e) {
+      if (e is PostgrestException && e.message.contains('image_path')) {
+        final rows = await _logApiCall(
+          action: 'members.select_with_subscriptions.fallback',
+          request: {'gym_id': gymId},
+          run: () => _client
+              .from('members')
+              .select(
+                'id, full_name, email, phone, status, joined_on, user_id, member_subscriptions(id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(name, price))',
+              )
+              .eq('gym_id', gymId)
+              .order('created_at', ascending: false),
+        );
+        return rows.cast<Map<String, dynamic>>();
+      }
+      rethrow;
+    }
   }
 
   Future<Map<String, dynamic>> createMemberAccount({
@@ -175,11 +278,7 @@ class GymRepository {
     return _invokeFunction(
       functionName: 'reset-gym-member-password',
       action: 'functions.reset-gym-member-password',
-      body: {
-        'gym_id': gymId,
-        'member_id': memberId,
-        'password': password,
-      },
+      body: {'gym_id': gymId, 'member_id': memberId, 'password': password},
       defaultError: 'Failed to reset password.',
     );
   }
@@ -197,7 +296,8 @@ class GymRepository {
         'gym_id': gymId,
         'member_id': memberId,
         'password': password,
-        if (email != null && email.trim().isNotEmpty) 'email': email.trim().toLowerCase(),
+        if (email != null && email.trim().isNotEmpty)
+          'email': email.trim().toLowerCase(),
       },
       defaultError: 'Failed to create app login.',
     );
@@ -225,13 +325,18 @@ class GymRepository {
     return data;
   }
 
-  Future<List<Map<String, dynamic>>> attendance(String gymId, {int limit = 100}) async {
+  Future<List<Map<String, dynamic>>> attendance(
+    String gymId, {
+    int limit = 100,
+  }) async {
     final rows = await _logApiCall(
       action: 'attendance_records.select',
       request: {'gym_id': gymId, 'limit': limit},
       run: () => _client
           .from('attendance_records')
-          .select('id, member_id, check_in_at, check_out_at, members(full_name, phone)')
+          .select(
+            'id, member_id, check_in_at, check_out_at, members(full_name, phone)',
+          )
           .eq('gym_id', gymId)
           .order('check_in_at', ascending: false)
           .limit(limit),
@@ -247,11 +352,14 @@ class GymRepository {
     await _logApiCall(
       action: 'rpc.mark_attendance',
       request: {'p_member_id': memberId, 'p_gym_id': gymId, 'p_action': action},
-      run: () => _client.rpc('mark_attendance', params: {
-        'p_member_id': memberId,
-        'p_gym_id': gymId,
-        'p_action': action,
-      }),
+      run: () => _client.rpc(
+        'mark_attendance',
+        params: {
+          'p_member_id': memberId,
+          'p_gym_id': gymId,
+          'p_action': action,
+        },
+      ),
     );
   }
 
@@ -275,15 +383,19 @@ class GymRepository {
         'price': price,
         'is_active': isActive,
       },
-      run: () => _client.from('subscription_plans').upsert(_upsertPayload({
-        'id': id,
-        'gym_id': gymId,
-        'name': name,
-        'description': description,
-        'duration_days': durationDays,
-        'price': price,
-        'is_active': isActive,
-      })),
+      run: () => _client
+          .from('subscription_plans')
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'name': name,
+              'description': description,
+              'duration_days': durationDays,
+              'price': price,
+              'is_active': isActive,
+            }),
+          ),
     );
   }
 
@@ -309,7 +421,9 @@ class GymRepository {
       request: {'gym_id': gymId},
       run: () => _client
           .from('subscription_plans')
-          .select('id, name, description, duration_days, price, is_active, created_at')
+          .select(
+            'id, name, description, duration_days, price, is_active, created_at',
+          )
           .eq('gym_id', gymId)
           .order('is_active', ascending: false)
           .order('created_at', ascending: false),
@@ -328,7 +442,12 @@ class GymRepository {
     final plans = await _logApiCall(
       action: 'subscription_plans.select.single',
       request: {'gym_id': gymId, 'id': planId},
-      run: () => _client.from('subscription_plans').select('duration_days').eq('gym_id', gymId).eq('id', planId).single(),
+      run: () => _client
+          .from('subscription_plans')
+          .select('duration_days')
+          .eq('gym_id', gymId)
+          .eq('id', planId)
+          .single(),
     );
     final duration = plans['duration_days'] as int;
     final endDate = startDate.add(Duration(days: duration));
@@ -430,13 +549,22 @@ class GymRepository {
   }) async {
     await _logApiCall(
       action: 'product_categories.upsert',
-      request: {'id': id, 'gym_id': gymId, 'name': name, 'sort_order': sortOrder},
-      run: () => _client.from('product_categories').upsert(_upsertPayload({
+      request: {
         'id': id,
         'gym_id': gymId,
         'name': name,
         'sort_order': sortOrder,
-      })),
+      },
+      run: () => _client
+          .from('product_categories')
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'name': name,
+              'sort_order': sortOrder,
+            }),
+          ),
     );
   }
 
@@ -501,21 +629,23 @@ class GymRepository {
       },
       run: () => _client
           .from('products')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'category_id': categoryId,
-            'name': name,
-            'actual_price': actualPrice,
-            'offer_price': offerPrice,
-            'price': sellingPrice,
-            'stock_qty': stockQty,
-            if (description != null) 'description': description,
-            if (sku != null) 'sku': sku,
-            if (removeImage) 'image_path': null,
-            if (!removeImage && imagePath != null) 'image_path': imagePath,
-            'is_active': isActive,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'category_id': categoryId,
+              'name': name,
+              'actual_price': actualPrice,
+              'offer_price': offerPrice,
+              'price': sellingPrice,
+              'stock_qty': stockQty,
+              if (description != null) 'description': description,
+              if (sku != null) 'sku': sku,
+              if (removeImage) 'image_path': null,
+              if (!removeImage && imagePath != null) 'image_path': imagePath,
+              'is_active': isActive,
+            }),
+          )
           .select('id, name, image_path')
           .single(),
     );
@@ -532,7 +662,9 @@ class GymRepository {
     await _logApiCall(
       action: 'storage.product-images.upload',
       request: {'path': path, 'bytes': bytes.length},
-      run: () => _client.storage.from(productImagesBucket).uploadBinary(
+      run: () => _client.storage
+          .from(productImagesBucket)
+          .uploadBinary(
             path,
             bytes,
             fileOptions: FileOptions(upsert: true, contentType: contentType),
@@ -541,7 +673,31 @@ class GymRepository {
     return path;
   }
 
-  Future<List<Map<String, dynamic>>> products(String gymId, {String? categoryId}) async {
+  Future<String> uploadMemberImage({
+    required String gymId,
+    required String memberId,
+    required Uint8List bytes,
+    String contentType = 'image/jpeg',
+  }) async {
+    final path = '$gymId/$memberId.jpg';
+    await _logApiCall(
+      action: 'storage.member-images.upload',
+      request: {'path': path, 'bytes': bytes.length},
+      run: () => _client.storage
+          .from(memberImagesBucket)
+          .uploadBinary(
+            path,
+            bytes,
+            fileOptions: FileOptions(upsert: true, contentType: contentType),
+          ),
+    );
+    return path;
+  }
+
+  Future<List<Map<String, dynamic>>> products(
+    String gymId, {
+    String? categoryId,
+  }) async {
     var query = _client.from('products').select().eq('gym_id', gymId);
     if (categoryId != null) {
       query = query.eq('category_id', categoryId);
@@ -578,7 +734,12 @@ class GymRepository {
     final total = qty * unitPrice;
     final order = await _logApiCall(
       action: 'sales_orders.insert',
-      request: {'gym_id': gymId, 'member_id': memberId, 'sold_by': soldBy, 'total_amount': total},
+      request: {
+        'gym_id': gymId,
+        'member_id': memberId,
+        'sold_by': soldBy,
+        'total_amount': total,
+      },
       run: () => _client
           .from('sales_orders')
           .insert({
@@ -613,7 +774,10 @@ class GymRepository {
     await _logApiCall(
       action: 'products.update.stock_qty',
       request: {'id': productId, 'stock_qty': stockQty - qty},
-      run: () => _client.from('products').update({'stock_qty': stockQty - qty}).eq('id', productId),
+      run: () => _client
+          .from('products')
+          .update({'stock_qty': stockQty - qty})
+          .eq('id', productId),
     );
   }
 
@@ -639,16 +803,20 @@ class GymRepository {
         'is_active': isActive,
         if (cardDesign != null) 'card_design': cardDesign,
       },
-      run: () => _client.from('promotions').upsert(_upsertPayload({
-        'id': id,
-        'gym_id': gymId,
-        'title': title,
-        'description': description,
-        'start_at': startAt.toIso8601String(),
-        'end_at': endAt.toIso8601String(),
-        'is_active': isActive,
-        if (cardDesign != null) 'card_design': cardDesign,
-      })),
+      run: () => _client
+          .from('promotions')
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'title': title,
+              'description': description,
+              'start_at': startAt.toIso8601String(),
+              'end_at': endAt.toIso8601String(),
+              'is_active': isActive,
+              if (cardDesign != null) 'card_design': cardDesign,
+            }),
+          ),
     );
   }
 
@@ -723,9 +891,12 @@ class GymRepository {
     await _logApiCall(
       action: 'gyms.update.setup_completed',
       request: {'id': gymId},
-      run: () => _client.from('gyms').update({
-        'setup_completed_at': DateTime.now().toUtc().toIso8601String(),
-      }).eq('id', gymId),
+      run: () => _client
+          .from('gyms')
+          .update({
+            'setup_completed_at': DateTime.now().toUtc().toIso8601String(),
+          })
+          .eq('id', gymId),
     );
   }
 
@@ -735,7 +906,11 @@ class GymRepository {
     final row = await _logApiCall(
       action: 'profiles.select.single',
       request: {'id': userId},
-      run: () => _client.from('profiles').select('full_name, phone').eq('id', userId).maybeSingle(),
+      run: () => _client
+          .from('profiles')
+          .select('full_name, phone')
+          .eq('id', userId)
+          .maybeSingle(),
     );
     if (row == null) return null;
     return row;
@@ -761,10 +936,9 @@ class GymRepository {
     await _logApiCall(
       action: 'gym_operating_hours.upsert',
       request: {'gym_id': gymId, 'count': rows.length},
-      run: () => _client.from('gym_operating_hours').upsert(
-            rows,
-            onConflict: 'gym_id,day_of_week',
-          ),
+      run: () => _client
+          .from('gym_operating_hours')
+          .upsert(rows, onConflict: 'gym_id,day_of_week'),
     );
   }
 
@@ -775,7 +949,8 @@ class GymRepository {
     await _logApiCall(
       action: 'gyms.update.amenities',
       request: {'id': gymId, 'amenities': amenities},
-      run: () => _client.from('gyms').update({'amenities': amenities}).eq('id', gymId),
+      run: () =>
+          _client.from('gyms').update({'amenities': amenities}).eq('id', gymId),
     );
   }
 
@@ -787,7 +962,9 @@ class GymRepository {
       request: {'gym_id': gymId},
       run: () => _client
           .from('gym_payment_options')
-          .select('id, label, upi_id, qr_image_path, sort_order, is_active, is_primary')
+          .select(
+            'id, label, upi_id, qr_image_path, sort_order, is_active, is_primary',
+          )
           .eq('gym_id', gymId)
           .eq('is_active', true)
           .order('is_primary', ascending: false)
@@ -809,7 +986,9 @@ class GymRepository {
       'gym_id': gymId,
       'label': label?.trim().isEmpty == true ? null : label?.trim(),
       'upi_id': upiId?.trim().isEmpty == true ? null : upiId?.trim(),
-      'qr_image_path': qrImagePath?.trim().isEmpty == true ? null : qrImagePath?.trim(),
+      'qr_image_path': qrImagePath?.trim().isEmpty == true
+          ? null
+          : qrImagePath?.trim(),
       'sort_order': sortOrder,
       'is_active': true,
     };
@@ -866,7 +1045,9 @@ class GymRepository {
     await _logApiCall(
       action: 'storage.gym-payment-qr.upload',
       request: {'path': path},
-      run: () => _client.storage.from(paymentQrBucket).uploadBinary(
+      run: () => _client.storage
+          .from(paymentQrBucket)
+          .uploadBinary(
             path,
             bytes,
             fileOptions: FileOptions(upsert: true, contentType: contentType),
@@ -910,7 +1091,8 @@ class GymRepository {
     await _logApiCall(
       action: 'gyms.update.timezone',
       request: {'id': gymId, 'timezone': timezone},
-      run: () => _client.from('gyms').update({'timezone': timezone}).eq('id', gymId),
+      run: () =>
+          _client.from('gyms').update({'timezone': timezone}).eq('id', gymId),
     );
   }
 
@@ -928,11 +1110,14 @@ class GymRepository {
         'longitude': longitude,
         'check_in_radius_meters': checkInRadiusMeters,
       },
-      run: () => _client.from('gyms').update({
-        'latitude': latitude,
-        'longitude': longitude,
-        'check_in_radius_meters': checkInRadiusMeters,
-      }).eq('id', gymId),
+      run: () => _client
+          .from('gyms')
+          .update({
+            'latitude': latitude,
+            'longitude': longitude,
+            'check_in_radius_meters': checkInRadiusMeters,
+          })
+          .eq('id', gymId),
     );
   }
 
@@ -942,7 +1127,9 @@ class GymRepository {
       request: {'gym_id': gymId},
       run: () => _client
           .from('promotions')
-          .select('id, title, description, start_at, end_at, is_active, created_at, card_design')
+          .select(
+            'id, title, description, start_at, end_at, is_active, created_at, card_design',
+          )
           .eq('gym_id', gymId)
           .order('is_active', ascending: false)
           .order('start_at', ascending: false),
@@ -958,7 +1145,9 @@ class GymRepository {
       request: {'gym_id': gymId, 'now': now},
       run: () => _client
           .from('promotions')
-          .select('id, title, description, start_at, end_at, is_active, card_design')
+          .select(
+            'id, title, description, start_at, end_at, is_active, card_design',
+          )
           .eq('gym_id', gymId)
           .eq('is_active', true)
           .lte('start_at', now)
@@ -1016,7 +1205,9 @@ class GymRepository {
     final rows = await _logApiCall(
       action: 'exercises.select',
       request: {'gym_id': gymId, 'category_id': categoryId},
-      run: () => query.order('is_active', ascending: false).order('name', ascending: true),
+      run: () => query
+          .order('is_active', ascending: false)
+          .order('name', ascending: true),
     );
     return rows.cast<Map<String, dynamic>>();
   }
@@ -1038,18 +1229,20 @@ class GymRepository {
       request: {'gym_id': gymId, 'id': id, 'name': name},
       run: () => _client
           .from('exercises')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'category_id': categoryId,
-            'name': name,
-            'image_path': imagePath,
-            'benefits': benefits,
-            'precautions': precautions,
-            'default_sets': defaultSets,
-            'default_reps': defaultReps,
-            'is_active': isActive,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'category_id': categoryId,
+              'name': name,
+              'image_path': imagePath,
+              'benefits': benefits,
+              'precautions': precautions,
+              'default_sets': defaultSets,
+              'default_reps': defaultReps,
+              'is_active': isActive,
+            }),
+          )
           .select('id')
           .single(),
     );
@@ -1082,7 +1275,9 @@ class GymRepository {
     await _logApiCall(
       action: 'storage.exercise-images.upload',
       request: {'path': path, 'bytes': bytes.length},
-      run: () => _client.storage.from(exerciseImagesBucket).uploadBinary(
+      run: () => _client.storage
+          .from(exerciseImagesBucket)
+          .uploadBinary(
             path,
             bytes,
             fileOptions: FileOptions(upsert: true, contentType: contentType),
@@ -1185,7 +1380,9 @@ class GymRepository {
     final rows = await _logApiCall(
       action: 'diet_plans.select',
       request: {'gym_id': gymId, 'category_id': categoryId},
-      run: () => query.order('is_active', ascending: false).order('name', ascending: true),
+      run: () => query
+          .order('is_active', ascending: false)
+          .order('name', ascending: true),
     );
     return rows.cast<Map<String, dynamic>>();
   }
@@ -1210,21 +1407,23 @@ class GymRepository {
       request: {'gym_id': gymId, 'name': name},
       run: () => _client
           .from('diet_plans')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'category_id': categoryId,
-            'name': name,
-            'description': description,
-            'image_path': imagePath,
-            'target_calories': targetCalories,
-            'target_protein_g': targetProteinG,
-            'target_carbs_g': targetCarbsG,
-            'target_fat_g': targetFatG,
-            'hydration_liters': hydrationLiters,
-            'duration_days': durationDays,
-            'is_active': isActive,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'category_id': categoryId,
+              'name': name,
+              'description': description,
+              'image_path': imagePath,
+              'target_calories': targetCalories,
+              'target_protein_g': targetProteinG,
+              'target_carbs_g': targetCarbsG,
+              'target_fat_g': targetFatG,
+              'hydration_liters': hydrationLiters,
+              'duration_days': durationDays,
+              'is_active': isActive,
+            }),
+          )
           .select('id')
           .single(),
     );
@@ -1262,11 +1461,14 @@ class GymRepository {
         'diet_plan_id': dietPlanId,
         'subscription_plan_ids': subscriptionPlanIds,
       },
-      run: () => _client.rpc('set_diet_plan_subscription_links', params: {
-        'p_gym_id': gymId,
-        'p_diet_plan_id': dietPlanId,
-        'p_subscription_plan_ids': subscriptionPlanIds,
-      }),
+      run: () => _client.rpc(
+        'set_diet_plan_subscription_links',
+        params: {
+          'p_gym_id': gymId,
+          'p_diet_plan_id': dietPlanId,
+          'p_subscription_plan_ids': subscriptionPlanIds,
+        },
+      ),
     );
   }
 
@@ -1286,13 +1488,18 @@ class GymRepository {
     );
   }
 
-  Future<List<Map<String, dynamic>>> dietMeals(String gymId, String planId) async {
+  Future<List<Map<String, dynamic>>> dietMeals(
+    String gymId,
+    String planId,
+  ) async {
     final rows = await _logApiCall(
       action: 'diet_meals.select',
       request: {'gym_id': gymId, 'diet_plan_id': planId},
       run: () => _client
           .from('diet_meals')
-          .select('id, meal_label, meal_time, guidance, sort_order, diet_food_items(*)')
+          .select(
+            'id, meal_label, meal_time, guidance, sort_order, diet_food_items(*)',
+          )
           .eq('gym_id', gymId)
           .eq('diet_plan_id', planId)
           .order('sort_order', ascending: true),
@@ -1314,15 +1521,17 @@ class GymRepository {
       request: {'diet_plan_id': planId, 'meal_label': mealLabel},
       run: () => _client
           .from('diet_meals')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'diet_plan_id': planId,
-            'meal_label': mealLabel,
-            'meal_time': mealTime,
-            'guidance': guidance,
-            'sort_order': sortOrder,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'diet_plan_id': planId,
+              'meal_label': mealLabel,
+              'meal_time': mealTime,
+              'guidance': guidance,
+              'sort_order': sortOrder,
+            }),
+          )
           .select('id')
           .single(),
     );
@@ -1336,7 +1545,11 @@ class GymRepository {
     await _logApiCall(
       action: 'diet_meals.delete',
       request: {'id': mealId},
-      run: () => _client.from('diet_meals').delete().eq('gym_id', gymId).eq('id', mealId),
+      run: () => _client
+          .from('diet_meals')
+          .delete()
+          .eq('gym_id', gymId)
+          .eq('id', mealId),
     );
   }
 
@@ -1355,7 +1568,11 @@ class GymRepository {
     await _logApiCall(
       action: 'diet_food_items.delete',
       request: {'id': foodId},
-      run: () => _client.from('diet_food_items').delete().eq('gym_id', gymId).eq('id', foodId),
+      run: () => _client
+          .from('diet_food_items')
+          .delete()
+          .eq('gym_id', gymId)
+          .eq('id', foodId),
     );
   }
 
@@ -1369,7 +1586,9 @@ class GymRepository {
     await _logApiCall(
       action: 'storage.diet-images.upload',
       request: {'path': path},
-      run: () => _client.storage.from(dietImagesBucket).uploadBinary(
+      run: () => _client.storage
+          .from(dietImagesBucket)
+          .uploadBinary(
             path,
             bytes,
             fileOptions: FileOptions(upsert: true, contentType: contentType),
@@ -1387,14 +1606,26 @@ class GymRepository {
 
   String? productImageUrl(String? imagePath) {
     if (imagePath == null || imagePath.trim().isEmpty) return null;
-    return _client.storage.from(productImagesBucket).getPublicUrl(imagePath.trim());
+    return _client.storage
+        .from(productImagesBucket)
+        .getPublicUrl(imagePath.trim());
+  }
+
+  static const String memberImagesBucket = 'member-images';
+
+  String? memberImageUrl(String? imagePath) {
+    if (imagePath == null || imagePath.trim().isEmpty) return null;
+    return _client.storage
+        .from(memberImagesBucket)
+        .getPublicUrl(imagePath.trim());
   }
 
   Future<Map<String, dynamic>> getGymCheckInQr(String gymId) async {
     final result = await _logApiCall(
       action: 'rpc.get_gym_check_in_qr',
       request: {'p_gym_id': gymId},
-      run: () => _client.rpc('get_gym_check_in_qr', params: {'p_gym_id': gymId}),
+      run: () =>
+          _client.rpc('get_gym_check_in_qr', params: {'p_gym_id': gymId}),
     );
     return Map<String, dynamic>.from(result as Map);
   }
@@ -1403,9 +1634,10 @@ class GymRepository {
     await _logApiCall(
       action: 'rpc.ensure_default_gym_support_faqs',
       request: {'p_gym_id': gymId},
-      run: () => _client.rpc('ensure_default_gym_support_faqs', params: {
-        'p_gym_id': gymId,
-      }),
+      run: () => _client.rpc(
+        'ensure_default_gym_support_faqs',
+        params: {'p_gym_id': gymId},
+      ),
     );
   }
 
@@ -1440,15 +1672,19 @@ class GymRepository {
     await _logApiCall(
       action: 'gym_support_faqs.upsert',
       request: {'gym_id': gymId, 'category': category, 'question': question},
-      run: () => _client.from('gym_support_faqs').upsert(_upsertPayload({
-        'id': id,
-        'gym_id': gymId,
-        'category': category,
-        'question': question,
-        'answer': answer,
-        'sort_order': sortOrder,
-        'is_active': isActive,
-      })),
+      run: () => _client
+          .from('gym_support_faqs')
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'category': category,
+              'question': question,
+              'answer': answer,
+              'sort_order': sortOrder,
+              'is_active': isActive,
+            }),
+          ),
     );
   }
 
@@ -1498,9 +1734,27 @@ class GymRepository {
 
   Future<void> ensureDefaultWorkoutCategories(String gymId) async {
     const defaults = [
-      ('weight_loss', 'Weight Loss', 'Fat loss and conditioning programs.', 'Mix strength with cardio; prioritize consistency.', 1),
-      ('muscle_gain', 'Muscle Gain', 'Hypertrophy and strength splits.', 'Progressive overload; protein and sleep matter.', 2),
-      ('healthy', 'Healthy Lifestyle', 'Balanced maintenance training.', 'Mix strength, mobility, and light cardio.', 3),
+      (
+        'weight_loss',
+        'Weight Loss',
+        'Fat loss and conditioning programs.',
+        'Mix strength with cardio; prioritize consistency.',
+        1,
+      ),
+      (
+        'muscle_gain',
+        'Muscle Gain',
+        'Hypertrophy and strength splits.',
+        'Progressive overload; protein and sleep matter.',
+        2,
+      ),
+      (
+        'healthy',
+        'Healthy Lifestyle',
+        'Balanced maintenance training.',
+        'Mix strength, mobility, and light cardio.',
+        3,
+      ),
     ];
     for (final (key, name, description, tips, order) in defaults) {
       await _logApiCall(
@@ -1518,7 +1772,10 @@ class GymRepository {
     }
   }
 
-  Future<List<Map<String, dynamic>>> workoutPlans(String gymId, {String? categoryId}) async {
+  Future<List<Map<String, dynamic>>> workoutPlans(
+    String gymId, {
+    String? categoryId,
+  }) async {
     var query = _client
         .from('workout_plans')
         .select(
@@ -1532,7 +1789,9 @@ class GymRepository {
     final rows = await _logApiCall(
       action: 'workout_plans.select',
       request: {'gym_id': gymId},
-      run: () => query.order('is_active', ascending: false).order('name', ascending: true),
+      run: () => query
+          .order('is_active', ascending: false)
+          .order('name', ascending: true),
     );
     return rows.cast<Map<String, dynamic>>();
   }
@@ -1556,20 +1815,22 @@ class GymRepository {
       request: {'gym_id': gymId, 'name': name},
       run: () => _client
           .from('workout_plans')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'category_id': categoryId,
-            'name': name,
-            'description': description,
-            'duration_weeks': durationWeeks,
-            'sessions_per_week': sessionsPerWeek,
-            'experience_level': experienceLevel,
-            'equipment_hint': equipmentHint,
-            'member_age': memberAge,
-            'member_weight_kg': memberWeightKg,
-            'is_active': isActive,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'category_id': categoryId,
+              'name': name,
+              'description': description,
+              'duration_weeks': durationWeeks,
+              'sessions_per_week': sessionsPerWeek,
+              'experience_level': experienceLevel,
+              'equipment_hint': equipmentHint,
+              'member_age': memberAge,
+              'member_weight_kg': memberWeightKg,
+              'is_active': isActive,
+            }),
+          )
           .select('id')
           .single(),
     );
@@ -1588,13 +1849,18 @@ class GymRepository {
         .eq('id', planId);
   }
 
-  Future<List<Map<String, dynamic>>> workoutSessions(String gymId, String planId) async {
+  Future<List<Map<String, dynamic>>> workoutSessions(
+    String gymId,
+    String planId,
+  ) async {
     final rows = await _logApiCall(
       action: 'workout_sessions.select',
       request: {'gym_id': gymId, 'workout_plan_id': planId},
       run: () => _client
           .from('workout_sessions')
-          .select('id, day_label, day_number, guidance, sort_order, workout_session_exercises(*)')
+          .select(
+            'id, day_label, day_number, guidance, sort_order, workout_session_exercises(*)',
+          )
           .eq('gym_id', gymId)
           .eq('workout_plan_id', planId)
           .order('sort_order', ascending: true),
@@ -1616,15 +1882,17 @@ class GymRepository {
       request: {'workout_plan_id': planId, 'day_label': dayLabel},
       run: () => _client
           .from('workout_sessions')
-          .upsert(_upsertPayload({
-            'id': id,
-            'gym_id': gymId,
-            'workout_plan_id': planId,
-            'day_label': dayLabel,
-            'day_number': dayNumber,
-            'guidance': guidance,
-            'sort_order': sortOrder,
-          }))
+          .upsert(
+            _upsertPayload({
+              'id': id,
+              'gym_id': gymId,
+              'workout_plan_id': planId,
+              'day_label': dayLabel,
+              'day_number': dayNumber,
+              'guidance': guidance,
+              'sort_order': sortOrder,
+            }),
+          )
           .select('id')
           .single(),
     );
@@ -1635,7 +1903,8 @@ class GymRepository {
     await _logApiCall(
       action: 'workout_session_exercises.upsert',
       request: row,
-      run: () => _client.from('workout_session_exercises').upsert(_upsertPayload(row)),
+      run: () =>
+          _client.from('workout_session_exercises').upsert(_upsertPayload(row)),
     );
   }
 
@@ -1643,10 +1912,10 @@ class GymRepository {
     required String workoutPlanId,
     required List<dynamic> sessions,
   }) async {
-    await _client.rpc('apply_workout_plan_sessions', params: {
-      'p_workout_plan_id': workoutPlanId,
-      'p_sessions': sessions,
-    });
+    await _client.rpc(
+      'apply_workout_plan_sessions',
+      params: {'p_workout_plan_id': workoutPlanId, 'p_sessions': sessions},
+    );
   }
 
   Future<void> setWorkoutPlanSubscriptionLinks({
@@ -1654,11 +1923,14 @@ class GymRepository {
     required String workoutPlanId,
     required List<String> subscriptionPlanIds,
   }) async {
-    await _client.rpc('set_workout_plan_subscription_links', params: {
-      'p_gym_id': gymId,
-      'p_workout_plan_id': workoutPlanId,
-      'p_subscription_plan_ids': subscriptionPlanIds,
-    });
+    await _client.rpc(
+      'set_workout_plan_subscription_links',
+      params: {
+        'p_gym_id': gymId,
+        'p_workout_plan_id': workoutPlanId,
+        'p_subscription_plan_ids': subscriptionPlanIds,
+      },
+    );
   }
 
   Future<List<Map<String, dynamic>>> pendingSalesOrders(
@@ -1686,7 +1958,8 @@ class GymRepository {
     await _logApiCall(
       action: 'sales_orders.confirm.rpc',
       request: {'order_id': orderId},
-      run: () => _client.rpc('confirm_sales_order', params: {'p_order_id': orderId}),
+      run: () =>
+          _client.rpc('confirm_sales_order', params: {'p_order_id': orderId}),
     );
   }
 
@@ -1694,7 +1967,8 @@ class GymRepository {
     await _logApiCall(
       action: 'sales_orders.reject.rpc',
       request: {'order_id': orderId},
-      run: () => _client.rpc('reject_sales_order', params: {'p_order_id': orderId}),
+      run: () =>
+          _client.rpc('reject_sales_order', params: {'p_order_id': orderId}),
     );
   }
 
@@ -1738,9 +2012,11 @@ class GymRepository {
     ];
 
     merged.sort((a, b) {
-      final aAt = DateTime.tryParse(a['created_at'] as String? ?? '') ??
+      final aAt =
+          DateTime.tryParse(a['created_at'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0);
-      final bAt = DateTime.tryParse(b['created_at'] as String? ?? '') ??
+      final bAt =
+          DateTime.tryParse(b['created_at'] as String? ?? '') ??
           DateTime.fromMillisecondsSinceEpoch(0);
       return bAt.compareTo(aAt);
     });
@@ -1755,17 +2031,29 @@ class GymRepository {
     final attendanceRows = await _logApiCall(
       action: 'report_attendance_daily.select',
       request: {'gym_id': gymId, 'limit': 30},
-      run: () => _client.from('report_attendance_daily').select().eq('gym_id', gymId).limit(30),
+      run: () => _client
+          .from('report_attendance_daily')
+          .select()
+          .eq('gym_id', gymId)
+          .limit(30),
     );
     final duesRows = await _logApiCall(
       action: 'report_dues_summary.select',
       request: {'gym_id': gymId, 'limit': 1},
-      run: () => _client.from('report_dues_summary').select().eq('gym_id', gymId).limit(1),
+      run: () => _client
+          .from('report_dues_summary')
+          .select()
+          .eq('gym_id', gymId)
+          .limit(1),
     );
     final salesRows = await _logApiCall(
       action: 'report_sales_daily.select',
       request: {'gym_id': gymId, 'limit': 30},
-      run: () => _client.from('report_sales_daily').select().eq('gym_id', gymId).limit(30),
+      run: () => _client
+          .from('report_sales_daily')
+          .select()
+          .eq('gym_id', gymId)
+          .limit(30),
     );
     return {
       'attendance': attendanceRows,
