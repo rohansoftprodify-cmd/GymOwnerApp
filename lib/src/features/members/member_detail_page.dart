@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +27,18 @@ class MemberDetailPage extends ConsumerStatefulWidget {
 
 class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
   final _formKey = GlobalKey<FormState>();
+  Uint8List? _avatarBytes;
+
+  Future<void> _pickAvatar() async {
+    final bytes = await pickAndCropImage(
+      context,
+      cropTitle: 'Crop profile picture',
+      aspectRatio: 1.0,
+    );
+    if (bytes != null) {
+      setState(() => _avatarBytes = bytes);
+    }
+  }
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
@@ -33,6 +47,9 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
   final _amountPaidController = TextEditingController();
   final _loginPasswordController = TextEditingController();
   final _loginPasswordConfirmController = TextEditingController();
+  final _leftMessageController = TextEditingController();
+  final _extraDaysController = TextEditingController();
+  final _extraAmountController = TextEditingController();
 
   bool _loading = true;
   bool _saving = false;
@@ -48,8 +65,6 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
   String? _subscriptionId;
   String _subscriptionStatus = 'active';
   int? _computedEndDays;
-  Uint8List? _imageBytes;
-  bool _clearImage = false;
 
   @override
   void dispose() {
@@ -61,6 +76,9 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     _amountPaidController.dispose();
     _loginPasswordController.dispose();
     _loginPasswordConfirmController.dispose();
+    _leftMessageController.dispose();
+    _extraDaysController.dispose();
+    _extraAmountController.dispose();
     super.dispose();
   }
 
@@ -88,6 +106,11 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
       _emergencyController.text = detail.emergencyContact ?? '';
       _notesController.text = detail.notes ?? '';
       _memberStatus = detail.status;
+      _leftMessageController.text = detail.leftMessage ?? '';
+      _extraDaysController.text = detail.extraDays.toString();
+      _extraAmountController.text = detail.extraAmount.toStringAsFixed(
+        detail.extraAmount.truncateToDouble() == detail.extraAmount ? 0 : 2,
+      );
 
       if (sub != null) {
         _subscriptionId = sub.id;
@@ -107,6 +130,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
       setState(() {
         _detail = detail;
         _plans = activePlans;
+        _avatarBytes = null;
         _loading = false;
       });
       _refreshEndPreview();
@@ -125,11 +149,6 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     setState(() => _computedEndDays = days);
   }
 
-  DateTime? get _computedEndDate {
-    if (_computedEndDays == null) return null;
-    return _startDate.add(Duration(days: _computedEndDays!));
-  }
-
   Future<void> _pickStartDate() async {
     final picked = await showDatePicker(
       context: context,
@@ -140,24 +159,9 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
-  Future<void> _pickImage() async {
-    final bytes = await pickAndCropImage(
-      context,
-      cropTitle: 'Crop member photo',
-      aspectRatio: 1,
-    );
-    if (bytes == null || !mounted) return;
-    setState(() {
-      _imageBytes = bytes;
-      _clearImage = false;
-    });
-  }
-
-  void _removeImage() {
-    setState(() {
-      _imageBytes = null;
-      _clearImage = true;
-    });
+  DateTime? get _computedEndDate {
+    if (_computedEndDays == null) return null;
+    return _startDate.add(Duration(days: _computedEndDays!));
   }
 
   Future<void> _save() async {
@@ -170,14 +174,25 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
       context,
       errorTitle: 'Save failed',
       action: () async {
-        String? newImagePath = _detail?.imagePath;
-        if (_clearImage) {
-          newImagePath = null;
-        } else if (_imageBytes != null) {
-          newImagePath = await repo.uploadMemberImage(
+        DateTime? leftAt;
+        String? leftMessage;
+        if (_memberStatus == 'left') {
+          leftAt = _detail?.leftAt ?? DateTime.now();
+          leftMessage = _leftMessageController.text.trim().isEmpty ? null : _leftMessageController.text.trim();
+        } else {
+          leftAt = null;
+          leftMessage = null;
+        }
+
+        final extraDays = int.tryParse(_extraDaysController.text.trim()) ?? 0;
+        final extraAmount = double.tryParse(_extraAmountController.text.trim()) ?? 0.0;
+
+        String? avatarPath = _detail?.avatarUrl;
+        if (_avatarBytes != null) {
+          avatarPath = await repo.uploadMemberAvatar(
             gymId: widget.gymId,
             memberId: widget.memberId,
-            bytes: _imageBytes!,
+            bytes: _avatarBytes!,
           );
         }
 
@@ -192,7 +207,11 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
           status: _memberStatus,
           emergencyContact: _emergencyController.text.trim(),
           notes: _notesController.text.trim(),
-          imagePath: newImagePath,
+          leftAt: leftAt,
+          leftMessage: leftMessage,
+          extraDays: extraDays,
+          extraAmount: extraAmount,
+          avatarUrl: avatarPath,
         );
 
         await repo.upsertMemberSubscription(
@@ -337,7 +356,6 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
     final semantics = context.appColors;
     final dateFormat = DateFormat.yMMMd();
     final detail = _detail!;
-    final repo = ref.read(gymRepositoryProvider);
 
     return Scaffold(
       appBar: AppBar(
@@ -384,161 +402,51 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Center(
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                          backgroundImage: _imageBytes != null
-                              ? MemoryImage(_imageBytes!)
-                              : (!_clearImage && detail.imagePath != null && detail.imagePath!.isNotEmpty)
-                                  ? NetworkImage(repo.memberImageUrl(detail.imagePath)!) as ImageProvider
-                                  : null,
-                          child: (_imageBytes == null && (_clearImage || detail.imagePath == null || detail.imagePath!.isEmpty))
-                              ? Icon(
-                                  Icons.add_a_photo_outlined,
-                                  size: 32,
-                                  color: theme.colorScheme.primary,
-                                )
-                              : null,
-                        ),
-                        if (_imageBytes != null || (!_clearImage && detail.imagePath != null && detail.imagePath!.isNotEmpty))
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: _removeImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.error,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.delete_outline,
-                                  size: 16,
-                                  color: theme.colorScheme.onError,
-                                ),
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        backgroundImage: _avatarBytes != null
+                            ? MemoryImage(_avatarBytes!)
+                            : (detail.avatarUrl != null && detail.avatarUrl!.isNotEmpty
+                                ? NetworkImage(ref.read(gymRepositoryProvider).memberAvatarUrl(detail.avatarUrl)!)
+                                : null),
+                        child: _avatarBytes == null && (detail.avatarUrl == null || detail.avatarUrl!.isEmpty)
+                            ? Icon(Icons.person_rounded, size: 50, color: theme.colorScheme.primary)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Material(
+                          color: theme.colorScheme.primary,
+                          elevation: 4,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _pickAvatar,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                size: 16,
+                                color: theme.colorScheme.onPrimary,
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 Text(
                   'Profile',
                   style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
-                if (detail.status == 'inactive') ...[
-                  Builder(builder: (ctx) {
-                    final double planPrice = detail.activeSubscription?.planPrice ?? 0;
-                    final double amountPaid = detail.activeSubscription?.amountPaid ?? 0;
-                    final double dues = planPrice - amountPaid;
-                    final hasDues = dues > 0 && detail.activeSubscription?.paymentStatus != 'paid';
-
-                    int extraDays = 0;
-                    if (detail.activeSubscription?.endDate != null) {
-                      final daysDiff = detail.activeSubscription!.endDate.difference(DateTime.now()).inDays;
-                      if (daysDiff > 0) {
-                        extraDays = daysDiff;
-                      }
-                    }
-
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: theme.colorScheme.error.withValues(alpha: 0.08),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: theme.colorScheme.error.withValues(alpha: 0.2)),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(Icons.info_outline_rounded, color: theme.colorScheme.error, size: 18),
-                              const SizedBox(width: 8),
-                              Text(
-                                'Inactive Member Status',
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  color: theme.colorScheme.error,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'This member left the gym. Outstanding status from last visit:',
-                            style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
-                          ),
-                          const SizedBox(height: 10),
-                          Wrap(
-                            spacing: 8,
-                            runSpacing: 8,
-                            children: [
-                              if (extraDays > 0)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.primary.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    '$extraDays Unused Days Remaining',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.primary,
-                                    ),
-                                  ),
-                                ),
-                              if (hasDues)
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: theme.colorScheme.error.withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    'Total Dues Owed: \$${dues.toStringAsFixed(2)}',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: theme.colorScheme.error,
-                                    ),
-                                  ),
-                                )
-                              else
-                                Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: semantics.accentLime.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
-                                  child: Text(
-                                    'No Outstanding Dues',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.bold,
-                                      color: semantics.onAccentLime,
-                                    ),
-                                  ),
-                                ),
-                            ],
-                          ),
-                        ],
-                      ),
-                    );
-                  }),
-                ],
                 AppTextField(
                   controller: _nameController,
                   label: 'Full name',
@@ -560,16 +468,33 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: _memberStatus,
+                  value: _memberStatus,
                   decoration: const InputDecoration(labelText: 'Member status'),
                   items: const [
                     DropdownMenuItem(value: 'active', child: Text('Active')),
                     DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
+                    DropdownMenuItem(value: 'left', child: Text('Left Gym')),
                   ],
                   onChanged: (v) {
-                    if (v != null) setState(() => _memberStatus = v);
+                    if (v != null) {
+                      setState(() {
+                        _memberStatus = v;
+                        if (v != 'left') {
+                          _leftMessageController.clear();
+                        }
+                      });
+                    }
                   },
                 ),
+                if (_memberStatus == 'left') ...[
+                  const SizedBox(height: 10),
+                  AppTextField(
+                    controller: _leftMessageController,
+                    label: 'Left Gym Message / Reason',
+                    maxLines: 2,
+                    hintText: 'Enter reason or message why the member left',
+                  ),
+                ],
                 const SizedBox(height: 10),
                 AppTextField(
                   controller: _emergencyController,
@@ -711,6 +636,109 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                   onChanged: (v) {
                     if (v != null) setState(() => _subscriptionStatus = v);
                   },
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Extra Gym Usage & Overdue Charges',
+                  style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 8),
+                Card(
+                  margin: EdgeInsets.zero,
+                  child: Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        if (detail.extraDays > 0 || detail.extraAmount > 0) ...[
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: semantics.accentCoral.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(color: semantics.accentCoral.withValues(alpha: 0.25)),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.warning_amber_rounded, color: semantics.accentCoral, size: 20),
+                                    const SizedBox(width: 8),
+                                    Text(
+                                      'Outstanding Overdue Charges',
+                                      style: theme.textTheme.labelMedium?.copyWith(
+                                        color: semantics.accentCoral,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  'Member has used the gym for ${detail.extraDays} extra days after subscription ended.\n'
+                                  'Owes a total of ₹${detail.extraAmount.toStringAsFixed(0)} to pay next time.',
+                                  style: theme.textTheme.bodySmall,
+                                ),
+                                const SizedBox(height: 10),
+                                OutlinedButton(
+                                  onPressed: () {
+                                    setState(() {
+                                      _extraDaysController.text = '0';
+                                      _extraAmountController.text = '0';
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(content: Text('Extra usage balance cleared. Remember to save changes.')),
+                                    );
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: semantics.accentCoral,
+                                    side: BorderSide(color: semantics.accentCoral),
+                                    padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 10),
+                                    minimumSize: Size.zero,
+                                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                  ),
+                                  child: const Text('Clear Extra Balance', style: TextStyle(fontSize: 11)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(height: 14),
+                        ],
+                        Row(
+                          children: [
+                            Expanded(
+                              child: AppTextField(
+                                controller: _extraDaysController,
+                                label: 'Extra days used',
+                                keyboardType: TextInputType.number,
+                                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: AppTextField(
+                                controller: _extraAmountController,
+                                label: 'Amount to pay (₹)',
+                                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                inputFormatters: [
+                                  FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'If the member used the gym for extra days after their plan expired, specify the days and the additional fee they should pay on their next visit.',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: semantics.mutedText,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 24),
                 FilledButton(

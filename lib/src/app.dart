@@ -17,6 +17,7 @@ class GymOwnerApp extends ConsumerWidget {
       themeMode: themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
+      debugShowCheckedModeBanner: false,
       routerConfig: appRouter,
       builder: (context, child) {
         final mediaQuery = MediaQuery.of(context);

@@ -20,18 +20,18 @@ class AppSemanticColors extends ThemeExtension<AppSemanticColors> {
 
   static const light = AppSemanticColors(
     cardBackground: Color(0xFFFFFFFF),
-    accentLime: Color(0xFF0D9488),
-    accentCoral: Color(0xFFEF4444),
+    accentLime: Color(0xFF000000),
+    accentCoral: Color(0xFFB00020),
     onAccentLime: Color(0xFFFFFFFF),
-    mutedText: Color(0xFF64748B),
+    mutedText: Color(0xFF666666),
   );
 
   static const dark = AppSemanticColors(
-    cardBackground: Color(0xFF131B2E),
-    accentLime: Color(0xFF2DD4BF),
-    accentCoral: Color(0xFFF87171),
-    onAccentLime: Color(0xFF0B0F19),
-    mutedText: Color(0xFF94A3B8),
+    cardBackground: Color(0xFF111111),
+    accentLime: Color(0xFFFFFFFF),
+    accentCoral: Color(0xFFFF6B6B),
+    onAccentLime: Color(0xFF000000),
+    mutedText: Color(0xFFA3A3A3),
   );
 
   @override

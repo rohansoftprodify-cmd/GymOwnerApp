@@ -95,6 +95,8 @@ class AppTextField extends StatelessWidget {
     this.onChanged,
     this.inputFormatters,
     this.readOnly = false,
+    this.maxLines = 1,
+    this.hintText,
   });
 
   final TextEditingController controller;
@@ -109,6 +111,8 @@ class AppTextField extends StatelessWidget {
   final void Function(String)? onFieldSubmitted;
   final void Function(String)? onChanged;
   final List<TextInputFormatter>? inputFormatters;
+  final int? maxLines;
+  final String? hintText;
 
   @override
   Widget build(BuildContext context) {
@@ -122,11 +126,13 @@ class AppTextField extends StatelessWidget {
       onFieldSubmitted: onFieldSubmitted,
       onChanged: onChanged,
       inputFormatters: inputFormatters,
+      maxLines: maxLines,
       style: const TextStyle(fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
         prefixIcon: prefixIcon,
         suffixIcon: suffixIcon,
+        hintText: hintText,
       ),
     );
   }

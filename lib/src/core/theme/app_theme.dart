@@ -5,17 +5,17 @@ import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 /// Monochrome white/black theme — light mode is white surfaces with black text;
 /// dark mode inverts to black surfaces with white text.
 class AppTheme {
-  static const Color lightBackground = Color(0xFFF8FAFC);
+  static const Color lightBackground = Color(0xFFFFFFFF);
   static const Color lightSurface = Color(0xFFFFFFFF);
-  static const Color lightPrimary = Color(0xFF1E40AF);
+  static const Color lightPrimary = Color(0xFF000000);
   static const Color lightOnPrimary = Color(0xFFFFFFFF);
-  static const Color lightOnSurface = Color(0xFF0F172A);
+  static const Color lightOnSurface = Color(0xFF000000);
 
-  static const Color darkBackground = Color(0xFF0B0F19);
-  static const Color darkSurface = Color(0xFF131B2E);
-  static const Color darkPrimary = Color(0xFF3B82F6);
-  static const Color darkOnPrimary = Color(0xFFFFFFFF);
-  static const Color darkOnSurface = Color(0xFFF8FAFC);
+  static const Color darkBackground = Color(0xFF000000);
+  static const Color darkSurface = Color(0xFF111111);
+  static const Color darkPrimary = Color(0xFFFFFFFF);
+  static const Color darkOnPrimary = Color(0xFF000000);
+  static const Color darkOnSurface = Color(0xFFFFFFFF);
 
   /// Legacy alias used by a few widgets.
   static const Color wellnessPrimary = lightPrimary;
@@ -24,60 +24,60 @@ class AppTheme {
   static const Color wellnessBackground = lightBackground;
   static const Color wellnessSurface = lightSurface;
 
-  static const Color _lightMuted = Color(0xFF64748B);
-  static const Color _darkMuted = Color(0xFF94A3B8);
+  static const Color _lightMuted = Color(0xFF666666);
+  static const Color _darkMuted = Color(0xFFA3A3A3);
 
   static ColorScheme get _lightScheme => const ColorScheme(
         brightness: Brightness.light,
         primary: lightPrimary,
         onPrimary: lightOnPrimary,
-        primaryContainer: Color(0xFFEEF2FF),
-        onPrimaryContainer: Color(0xFF1E40AF),
-        secondary: Color(0xFF334155),
-        onSecondary: Color(0xFFFFFFFF),
-        secondaryContainer: Color(0xFFF1F5F9),
-        onSecondaryContainer: Color(0xFF1E293B),
-        tertiary: Color(0xFF0D9488),
-        onTertiary: Color(0xFFFFFFFF),
-        tertiaryContainer: Color(0xFFCCFBF1),
-        onTertiaryContainer: Color(0xFF115E59),
-        error: Color(0xFFEF4444),
-        onError: Color(0xFFFFFFFF),
-        surface: lightSurface,
+        primaryContainer: Color(0xFFF0F0F0),
+        onPrimaryContainer: lightOnSurface,
+        secondary: Color(0xFF333333),
+        onSecondary: lightOnPrimary,
+        secondaryContainer: Color(0xFFE8E8E8),
+        onSecondaryContainer: lightOnSurface,
+        tertiary: lightOnSurface,
+        onTertiary: lightOnPrimary,
+        tertiaryContainer: Color(0xFFF5F5F5),
+        onTertiaryContainer: lightOnSurface,
+        error: Color(0xFFB00020),
+        onError: lightOnPrimary,
+        surface: lightBackground,
         onSurface: lightOnSurface,
         onSurfaceVariant: _lightMuted,
-        outline: Color(0xFFE2E8F0),
-        outlineVariant: Color(0xFFF1F5F9),
+        outline: Color(0xFFD4D4D4),
+        outlineVariant: Color(0xFFE8E8E8),
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
         inverseSurface: lightOnSurface,
         onInverseSurface: lightSurface,
         inversePrimary: darkPrimary,
         surfaceTint: lightPrimary,
-        surfaceContainerHighest: Color(0xFFF1F5F9),
+        surfaceContainerHighest: Color(0xFFF5F5F5),
       );
 
   static ColorScheme get _darkScheme => const ColorScheme(
         brightness: Brightness.dark,
         primary: darkPrimary,
         onPrimary: darkOnPrimary,
-        primaryContainer: Color(0xFF1E3A8A),
-        onPrimaryContainer: Color(0xFFDBEAFE),
-        secondary: Color(0xFF94A3B8),
-        onSecondary: Color(0xFF0B0F19),
-        secondaryContainer: Color(0xFF1E293B),
-        onSecondaryContainer: Color(0xFFF1F5F9),
-        tertiary: Color(0xFF2DD4BF),
-        onTertiary: Color(0xFF0B0F19),
-        tertiaryContainer: Color(0xFF115E59),
-        onTertiaryContainer: Color(0xFFCCFBF1),
-        error: Color(0xFFF87171),
-        onError: Color(0xFF0B0F19),
-        surface: darkSurface,
+        primaryContainer: Color(0xFF1A1A1A),
+        onPrimaryContainer: darkOnSurface,
+        secondary: Color(0xFFCCCCCC),
+        onSecondary: darkOnPrimary,
+        secondaryContainer: Color(0xFF1E1E1E),
+        onSecondaryContainer: darkOnSurface,
+        tertiary: darkOnSurface,
+        onTertiary: darkOnPrimary,
+        tertiaryContainer: Color(0xFF1A1A1A),
+        onTertiaryContainer: darkOnSurface,
+        error: Color(0xFFFF6B6B),
+        onError: darkOnPrimary,
+        surface: darkBackground,
         onSurface: darkOnSurface,
         onSurfaceVariant: _darkMuted,
-        outline: Color(0xFF334155),
-        outlineVariant: Color(0xFF1E293B),
+        outline: Color(0xFF3A3A3A),
+        outlineVariant: Color(0xFF2A2A2A),
         shadow: Color(0xFF000000),
         scrim: Color(0xFF000000),
         inverseSurface: darkOnSurface,

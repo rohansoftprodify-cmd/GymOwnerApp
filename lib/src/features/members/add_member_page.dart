@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -25,6 +27,18 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
   final _emergencyController = TextEditingController();
   final _notesController = TextEditingController();
   final _amountPaidController = TextEditingController(text: '0');
+  Uint8List? _avatarBytes;
+
+  Future<void> _pickAvatar() async {
+    final bytes = await pickAndCropImage(
+      context,
+      cropTitle: 'Crop profile picture',
+      aspectRatio: 1.0,
+    );
+    if (bytes != null) {
+      setState(() => _avatarBytes = bytes);
+    }
+  }
 
   List<Map<String, dynamic>> _plans = [];
   String? _planId;
@@ -33,7 +47,6 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
   bool _loadingPlans = true;
   bool _saving = false;
   bool _obscurePassword = true;
-  Uint8List? _imageBytes;
 
   @override
   void initState() {
@@ -79,20 +92,6 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
     if (picked != null) setState(() => _startDate = picked);
   }
 
-  Future<void> _pickImage() async {
-    final bytes = await pickAndCropImage(
-      context,
-      cropTitle: 'Crop member photo',
-      aspectRatio: 1,
-    );
-    if (bytes == null || !mounted) return;
-    setState(() => _imageBytes = bytes);
-  }
-
-  void _removeImage() {
-    setState(() => _imageBytes = null);
-  }
-
   Future<void> _save() async {
     if (!_formKey.currentState!.validate() || _planId == null) return;
 
@@ -119,26 +118,30 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
           notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
         );
 
-        if (!mounted) return;
-        final memberObj = result['member'] as Map<String, dynamic>?;
-        final memberId = memberObj?['id'] as String?;
-
-        if (memberId != null && _imageBytes != null) {
-          try {
-            final path = await repo.uploadMemberImage(
+        final memberMap = result['member'] as Map<String, dynamic>?;
+        if (memberMap != null) {
+          final memberId = memberMap['id'] as String;
+          if (_avatarBytes != null) {
+            final avatarPath = await repo.uploadMemberAvatar(
               gymId: widget.gymId,
               memberId: memberId,
-              bytes: _imageBytes!,
+              bytes: _avatarBytes!,
             );
             await repo.upsertMember(
               gymId: widget.gymId,
               memberId: memberId,
               fullName: _nameController.text.trim(),
               phone: _phoneController.text.trim(),
-              imagePath: path,
+              email: _emailController.text.trim().isEmpty
+                  ? null
+                  : _emailController.text.trim(),
+              status: 'active',
+              emergencyContact: _emergencyController.text.trim().isEmpty
+                  ? null
+                  : _emergencyController.text.trim(),
+              notes: _notesController.text.trim().isEmpty ? null : _notesController.text.trim(),
+              avatarUrl: avatarPath,
             );
-          } catch (photoError) {
-            debugPrint('Failed to upload member photo: $photoError');
           }
         }
 
@@ -207,50 +210,42 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
             key: _formKey,
             child: Column(
               children: [
-                GestureDetector(
-                  onTap: _pickImage,
-                  child: Center(
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 50,
-                          backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
-                          backgroundImage: _imageBytes != null
-                              ? MemoryImage(_imageBytes!)
-                              : null,
-                          child: _imageBytes == null
-                              ? Icon(
-                                  Icons.add_a_photo_outlined,
-                                  size: 32,
-                                  color: theme.colorScheme.primary,
-                                )
-                              : null,
-                        ),
-                        if (_imageBytes != null)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: GestureDetector(
-                              onTap: _removeImage,
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: theme.colorScheme.error,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  Icons.delete_outline,
-                                  size: 16,
-                                  color: theme.colorScheme.onError,
-                                ),
+                Center(
+                  child: Stack(
+                    children: [
+                      CircleAvatar(
+                        radius: 50,
+                        backgroundColor: theme.colorScheme.primary.withValues(alpha: 0.1),
+                        backgroundImage: _avatarBytes != null ? MemoryImage(_avatarBytes!) : null,
+                        child: _avatarBytes == null
+                            ? Icon(Icons.person_rounded, size: 50, color: theme.colorScheme.primary)
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: 0,
+                        right: 0,
+                        child: Material(
+                          color: theme.colorScheme.primary,
+                          elevation: 4,
+                          shape: const CircleBorder(),
+                          child: InkWell(
+                            customBorder: const CircleBorder(),
+                            onTap: _pickAvatar,
+                            child: Padding(
+                              padding: const EdgeInsets.all(8),
+                              child: Icon(
+                                Icons.camera_alt_rounded,
+                                size: 16,
+                                color: theme.colorScheme.onPrimary,
                               ),
                             ),
                           ),
-                      ],
-                    ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 20),
                 AppTextField(
                   controller: _nameController,
                   label: 'Full name',

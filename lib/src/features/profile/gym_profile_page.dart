@@ -141,7 +141,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
           ),
         ],
       ),
-      _ProfileSectionConfig(
+      /*_ProfileSectionConfig(
         title: 'AI intelligence',
         subtitle: 'Analytics, forecasts, and automation',
         icon: Icons.auto_awesome_outlined,
@@ -192,7 +192,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
             onTap: () => context.push('/ai-analysis?gymId=${widget.gymId}'),
           ),
         ],
-      ),
+      ),*/
       _ProfileSectionConfig(
         title: 'Member programs',
         subtitle: 'Workouts, diet, and exercise library',
@@ -363,7 +363,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                         context.push('/gym-details?gymId=${widget.gymId}'),
                   ),
                   const SizedBox(height: 14),
-                  ProfileQuickActions(
+                 /* ProfileQuickActions(
                     actions: [
                       ProfileQuickAction(
                         icon: Icons.people_alt_rounded,
@@ -389,7 +389,7 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 14),
+                  const SizedBox(height: 14),*/
                 ],
                 ProfileSettingsSearchBar(
                   controller: _searchController,

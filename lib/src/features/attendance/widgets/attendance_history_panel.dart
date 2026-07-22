@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/features/attendance/attendance_utils.dart';
 import 'package:gym_owner_app/src/features/attendance/widgets/attendance_record_card.dart';
+import 'package:gym_owner_app/src/features/dashboard/tabs/attendance_tab.dart';
 
 enum AttendanceHistoryRange { today, yesterday, last7, last30, all }
 
@@ -202,6 +203,17 @@ class _AttendanceHistoryPanelState
                                   isActiveCheckIn:
                                       record['check_out_at'] == null,
                                   compact: true,
+                                  onCheckOut: record['check_out_at'] == null
+                                      ? () => checkOutMemberHelper(
+                                            context,
+                                            ref,
+                                            gymId: widget.gymId,
+                                            recordId: record['id'] as String,
+                                            memberId: memberIdFromRecord(record),
+                                            memberName: memberNameFromRecord(record),
+                                            onSuccess: _pullRefresh,
+                                          )
+                                      : null,
                                 ),
                             ],
                           );

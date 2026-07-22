@@ -53,7 +53,11 @@ class MemberDetail {
     this.emergencyContact,
     this.notes,
     this.activeSubscription,
-    this.imagePath,
+    this.leftAt,
+    this.leftMessage,
+    this.extraDays = 0,
+    this.extraAmount = 0.0,
+    this.avatarUrl,
   });
 
   final String id;
@@ -67,7 +71,11 @@ class MemberDetail {
   final String? emergencyContact;
   final String? notes;
   final MemberSubscriptionDetail? activeSubscription;
-  final String? imagePath;
+  final DateTime? leftAt;
+  final String? leftMessage;
+  final int extraDays;
+  final double extraAmount;
+  final String? avatarUrl;
 
   factory MemberDetail.fromMap(Map<String, dynamic> map) {
     final subs = (map['member_subscriptions'] as List<dynamic>? ?? [])
@@ -100,7 +108,11 @@ class MemberDetail {
       notes: map['notes'] as String?,
       activeSubscription:
           activeSub == null ? null : MemberSubscriptionDetail.fromMap(activeSub),
-      imagePath: map['image_path'] as String?,
+      leftAt: _parseDate(map['left_at'] as String?),
+      leftMessage: map['left_message'] as String?,
+      extraDays: map['extra_days'] as int? ?? 0,
+      extraAmount: (map['extra_amount'] as num?)?.toDouble() ?? 0.0,
+      avatarUrl: map['avatar_url'] as String?,
     );
   }
 

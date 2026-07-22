@@ -7,13 +7,16 @@ import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/ai/models/churn_risk_result.dart';
 import 'package:gym_owner_app/src/features/ai/models/sales_forecast_result.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/churn_radar_section.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/dashboard_sheets.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/home_pulse_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/home_quick_actions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/home_welcome_banner.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/pending_payment_orders_list.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/offers_carousel.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/overview_card.dart';
-import 'package:gym_owner_app/src/features/dashboard/widgets/pending_payment_orders_list.dart';
+import 'package:gym_owner_app/src/features/dashboard/widgets/sales_forecast_section.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/section_header.dart';
 import 'package:intl/intl.dart';
 
@@ -58,15 +61,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     try {
       await ref.read(gymRepositoryProvider).confirmSalesOrder(orderId);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Payment confirmed')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment confirmed')),
+      );
       setState(() => _refreshTick++);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _processingOrderId = null);
     }
@@ -77,15 +78,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
     try {
       await ref.read(gymRepositoryProvider).rejectSalesOrder(orderId);
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Order rejected')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Order rejected')),
+      );
       setState(() => _refreshTick++);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(e.toString())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
     } finally {
       if (mounted) setState(() => _processingOrderId = null);
     }
@@ -109,12 +108,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         }
 
         final members = snap.data![0] as List<Map<String, dynamic>>;
-        final activeMembersCount = members
-            .where((m) => m['status'] == 'active')
-            .length;
-        final leftMembersCount = members
-            .where((m) => m['status'] == 'inactive')
-            .length;
         final attendance = snap.data![1] as List<Map<String, dynamic>>;
         final subscriptions = snap.data![2] as List<Map<String, dynamic>>;
         final products = snap.data![3] as List<Map<String, dynamic>>;
@@ -129,22 +122,32 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
         final now = DateTime.now();
         final upcomingCutoff = now.add(const Duration(days: 15));
+        final leftMemberIds = members
+            .where((m) => (m['status'] as String? ?? '').toLowerCase() == 'left')
+            .map((m) => m['id'] as String)
+            .toSet();
+
         final pendingFees = subscriptions.where((s) {
           final status = (s['payment_status'] as String? ?? '').toLowerCase();
+          final mId = s['member_id'] as String?;
+          if (mId != null && leftMemberIds.contains(mId)) {
+            return false;
+          }
           return status == 'due' || status == 'partial';
         }).toList();
-        final upcomingRenewals =
-            subscriptions.where((s) {
-              final raw = s['end_date'] as String?;
-              if (raw == null) return false;
-              final endDate = DateTime.tryParse(raw);
-              if (endDate == null) return false;
-              return endDate.isAfter(now.subtract(const Duration(days: 1))) &&
-                  endDate.isBefore(upcomingCutoff);
-            }).toList()..sort(
-              (a, b) =>
-                  (a['end_date'] as String).compareTo(b['end_date'] as String),
-            );
+        final upcomingRenewals = subscriptions.where((s) {
+          final raw = s['end_date'] as String?;
+          if (raw == null) return false;
+          final endDate = DateTime.tryParse(raw);
+          if (endDate == null) return false;
+          final mId = s['member_id'] as String?;
+          if (mId != null && leftMemberIds.contains(mId)) {
+            return false;
+          }
+          return endDate.isAfter(now.subtract(const Duration(days: 1))) &&
+              endDate.isBefore(upcomingCutoff);
+        }).toList()
+          ..sort((a, b) => (a['end_date'] as String).compareTo(b['end_date'] as String));
 
         final todayAttendance = attendance.where((row) {
           final raw = row['check_in_at'] as String?;
@@ -160,6 +163,8 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           return status == 'active';
         }).length;
 
+        final leftCount = members.where((m) => m['status'] == 'left').length;
+
         final money = NumberFormat('#,##0').format(pendingAmount);
 
         return RefreshIndicator(
@@ -168,11 +173,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.only(bottom: 100, top: 4),
             children: [
-              HomeWelcomeBanner(
-                gymName: gymName,
-                role: role,
-                onTap: () => context.push('/gym-profile?gymId=${widget.gymId}'),
-              ),
+              // HomeWelcomeBanner(
+              //   gymName: gymName,
+              //   role: role,
+              //   onTap: () => context.push('/gym-profile?gymId=${widget.gymId}'),
+              // ),
               const SizedBox(height: 14),
               HomeQuickActions(
                 actions: [
@@ -184,31 +189,28 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   HomeQuickAction(
                     icon: Icons.qr_code_2_rounded,
                     label: 'Check-in QR',
-                    onTap: () =>
-                        context.push('/gym-check-in-qr?gymId=${widget.gymId}'),
+                    onTap: () => context.push('/gym-check-in-qr?gymId=${widget.gymId}'),
                   ),
                   HomeQuickAction(
                     icon: Icons.insights_rounded,
                     label: 'Retention',
                     accentColor: semantics.accentCoral,
-                    onTap: () =>
-                        context.push('/member-retention?gymId=${widget.gymId}'),
+                    onTap: () => context.push('/member-retention?gymId=${widget.gymId}'),
                   ),
                   HomeQuickAction(
                     icon: Icons.support_agent_rounded,
                     label: 'Support',
-                    onTap: () =>
-                        context.push('/support-faqs?gymId=${widget.gymId}'),
+                    onTap: () => context.push('/support-faqs?gymId=${widget.gymId}'),
                   ),
                 ],
               ),
+              /*const SizedBox(height: _sectionGap),
+              HomePulseCard(
+                checkInsToday: todayAttendance,
+                activeMembers: activePlans,
+                pendingFeesCount: pendingFees.length,
+              ),*/
               const SizedBox(height: _sectionGap),
-              // HomePulseCard(
-              //   checkInsToday: todayAttendance,
-              //   activeMembers: activePlans,
-              //   pendingFeesCount: pendingFees.length,
-              // ),
-              // const SizedBox(height: _sectionGap),
               _SectionLabel(
                 title: 'Gym snapshot',
                 icon: Icons.analytics_outlined,
@@ -218,27 +220,21 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 children: [
                   Expanded(
                     child: OverviewCard(
-                      title: 'Active members',
-                      value: '$activeMembersCount',
+                      title: 'Total members',
+                      value: '${members.length}',
                       icon: Icons.people_alt_rounded,
                       color: colorScheme.primary,
                       subtitle: '$activePlans active plans',
-                      onTap: () => context.push(
-                        '/members?gymId=${widget.gymId}&status=active',
-                      ),
+                      onTap: () => context.push('/members?gymId=${widget.gymId}'),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Expanded(
                     child: OverviewCard(
-                      title: 'Left members',
-                      value: '$leftMembersCount',
-                      icon: Icons.person_off_rounded,
-                      color: semantics.mutedText,
-                      subtitle: 'Manually deactivated',
-                      onTap: () => context.push(
-                        '/members?gymId=${widget.gymId}&status=inactive',
-                      ),
+                      title: 'Store items',
+                      value: '${products.length}',
+                      icon: Icons.inventory_2_outlined,
+                      color: colorScheme.secondary,
                     ),
                   ),
                 ],
@@ -246,16 +242,6 @@ class _HomeTabState extends ConsumerState<HomeTab> {
               const SizedBox(height: 10),
               Row(
                 children: [
-                  Expanded(
-                    child: OverviewCard(
-                      title: 'Store items',
-                      value: '${products.length}',
-                      icon: Icons.inventory_2_outlined,
-                      color: colorScheme.secondary,
-                      subtitle: 'Products in store',
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: OverviewCard(
                       title: 'Overdue fees',
@@ -267,11 +253,25 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           : '${pendingFees.length} pending',
                       onTap: pendingFees.isEmpty
                           ? null
+                          : () => showFeeListSheet(context, pendingFees, 'Pending Fees'),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: OverviewCard(
+                      title: 'Renewals (15d)',
+                      value: '${upcomingRenewals.length}',
+                      icon: Icons.event_available_rounded,
+                      color: semantics.accentLime,
+                      subtitle: upcomingRenewals.isEmpty ? 'None due soon' : 'Upcoming',
+                      onTap: upcomingRenewals.isEmpty
+                          ? null
                           : () => showFeeListSheet(
-                              context,
-                              pendingFees,
-                              'Pending Fees',
-                            ),
+                                context,
+                                upcomingRenewals,
+                                'Upcoming Renewals',
+                                mode: FeeListMode.renewals,
+                              ),
                     ),
                   ),
                 ],
@@ -281,22 +281,17 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 children: [
                   Expanded(
                     child: OverviewCard(
-                      title: 'Renewals (15d)',
-                      value: '${upcomingRenewals.length}',
-                      icon: Icons.event_available_rounded,
-                      color: semantics.accentLime,
-                      subtitle: upcomingRenewals.isEmpty
-                          ? 'None due soon'
-                          : 'Upcoming',
-                      onTap: upcomingRenewals.isEmpty
-                          ? null
-                          : () => showFeeListSheet(
-                              context,
-                              upcomingRenewals,
-                              'Upcoming Renewals',
-                              mode: FeeListMode.renewals,
-                            ),
+                      title: 'Left persons',
+                      value: '$leftCount',
+                      icon: Icons.person_remove_rounded,
+                      color: colorScheme.outline,
+                      subtitle: 'Exited members',
+                      onTap: () => context.push('/members?gymId=${widget.gymId}'),
                     ),
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: SizedBox.shrink(),
                   ),
                 ],
               ),
@@ -337,8 +332,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 SectionHeader(
                   title: 'Pending fees',
                   actionLabel: 'Details',
-                  onAction: () =>
-                      showFeeListSheet(context, pendingFees, 'Pending Fees'),
+                  onAction: () => showFeeListSheet(context, pendingFees, 'Pending Fees'),
                 ),
                 const SizedBox(height: 6),
                 FeeHorizontalList(
@@ -391,9 +385,7 @@ class _SectionLabel extends StatelessWidget {
         const SizedBox(width: 6),
         Text(
           title,
-          style: theme.textTheme.titleSmall?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
+          style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w800),
         ),
         const Spacer(),
         Text(
