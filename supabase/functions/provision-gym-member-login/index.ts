@@ -9,6 +9,7 @@ type ProvisionLoginPayload = {
   gym_id: string;
   member_id: string;
   password: string;
+  phone?: string;
   email?: string;
 };
 
@@ -84,19 +85,24 @@ Deno.serve(async (req) => {
       );
     }
 
-    const email = (payload.email?.trim() || (member.email as string | null)?.trim() || '')
-      .toLowerCase();
-    if (!email) {
-      return jsonResponse({ error: 'Email is required to create app login.' }, 400);
+    const phone = normalizePhone(payload.phone?.trim() || (member.phone as string | null) || '');
+    if (!phone) {
+      return jsonResponse({ error: 'Phone is required to create app login.' }, 400);
     }
 
+    const emailRaw = (payload.email?.trim() || (member.email as string | null)?.trim() || '')
+      .toLowerCase();
+    const email = emailRaw.includes('@') ? emailRaw : null;
+
     const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
-      email,
+      phone,
       password: payload.password,
-      email_confirm: true,
+      phone_confirm: true,
+      ...(email ? { email, email_confirm: true } : {}),
       user_metadata: {
         full_name: member.full_name,
         app_role: 'member',
+        login_phone: phone,
       },
     });
 
@@ -109,7 +115,7 @@ Deno.serve(async (req) => {
     const { error: profileError } = await adminClient.from('profiles').upsert({
       id: userId,
       full_name: member.full_name,
-      phone: member.phone,
+      phone,
     });
 
     if (profileError) {
@@ -117,9 +123,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: profileError.message }, 400);
     }
 
+    const memberPatch: Record<string, unknown> = { user_id: userId, phone };
+    if (email) memberPatch.email = email;
+
     const { error: memberUpdateError } = await adminClient
       .from('members')
-      .update({ user_id: userId, email })
+      .update(memberPatch)
       .eq('id', member.id)
       .eq('gym_id', payload.gym_id);
 
@@ -143,7 +152,7 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         success: true,
-        credentials: { email, password: payload.password },
+        credentials: { phone, email, password: payload.password },
         message: 'App login created. Share credentials with the member.',
       },
       200,
@@ -155,6 +164,15 @@ Deno.serve(async (req) => {
     );
   }
 });
+
+function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
+  return null;
+}
 
 function jsonResponse(body: Record<string, unknown>, status: number) {
   return new Response(JSON.stringify(body), {

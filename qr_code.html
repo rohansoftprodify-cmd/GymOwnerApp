@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BioSyncIQ - Deep Link & QR Code Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #0a0d14;
+      --card-bg: rgba(18, 24, 38, 0.85);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --accent-teal: #00f2fe;
+      --accent-blue: #4facfe;
+      --accent-purple: #7f53ac;
+      --warning-amber: #f59e0b;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+      --success: #10b981;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem 1rem;
+      background-image: 
+        radial-gradient(circle at 15% 20%, rgba(0, 242, 254, 0.12) 0%, transparent 40%),
+        radial-gradient(circle at 85% 80%, rgba(127, 83, 172, 0.15) 0%, transparent 45%);
+      background-attachment: fixed;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 540px;
+    }
+
+    .card {
+      background: var(--card-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 2.25rem 2rem;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5),
+                  0 0 0 1px rgba(255, 255, 255, 0.05);
+      animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--accent-teal), var(--accent-blue), var(--accent-purple));
+    }
+
+    .brand-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 0.4rem;
+    }
+
+    .brand-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #0b1120;
+      font-weight: 800;
+      font-size: 18px;
+      box-shadow: 0 4px 12px rgba(0, 242, 254, 0.3);
+    }
+
+    .brand-title {
+      font-size: 1.5rem;
+      font-weight: 800;
+      letter-spacing: -0.5px;
+      background: linear-gradient(135deg, #ffffff 30%, #cbd5e1 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    .subtitle {
+      color: var(--text-muted);
+      font-size: 0.88rem;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .info-box {
+      background: rgba(245, 158, 11, 0.1);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+      border-radius: 16px;
+      padding: 0.9rem 1.1rem;
+      margin-bottom: 1.5rem;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+      font-size: 0.82rem;
+      color: #fde68a;
+      line-height: 1.45;
+    }
+
+    .info-box icon {
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+
+    .tabs {
+      display: flex;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 4px;
+      border-radius: 14px;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 0.65rem;
+      border: none;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .tab-btn.active {
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-main);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+    }
+
+    .qr-wrapper {
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    .qr-container {
+      display: inline-block;
+      padding: 1.25rem;
+      background: #ffffff;
+      border-radius: 20px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .qr-container:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 15px 35px rgba(0, 242, 254, 0.25);
+    }
+
+    #qrcode img, #qrcode canvas {
+      display: block;
+      margin: 0 auto;
+    }
+
+    .link-details {
+      background: rgba(15, 23, 42, 0.6);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .link-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: var(--accent-teal);
+      margin-bottom: 0.4rem;
+    }
+
+    .link-uri {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      color: #e2e8f0;
+      word-break: break-all;
+      background: rgba(0, 0, 0, 0.35);
+      padding: 0.6rem 0.8rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      line-height: 1.4;
+    }
+
+    .actions {
+      display: flex;
+      flex-direction: column;
+      gap: 0.85rem;
+    }
+
+    .btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 0.9rem 1.5rem;
+      border-radius: 14px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.25s ease;
+      text-decoration: none;
+      border: none;
+      outline: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent-teal), var(--accent-blue));
+      color: #060b17;
+      box-shadow: 0 4px 15px rgba(0, 242, 254, 0.25);
+    }
+
+    .btn-primary:hover {
+      opacity: 0.95;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0, 242, 254, 0.4);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-main);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+
+    .btn-secondary:hover {
+      background: rgba(255, 255, 255, 0.12);
+      transform: translateY(-2px);
+    }
+
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: #1e293b;
+      color: var(--text-main);
+      padding: 0.75rem 1.5rem;
+      border-radius: 30px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      opacity: 0;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      z-index: 100;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    .toast-icon {
+      color: var(--success);
+    }
+
+    .web-url-input {
+      display: flex;
+      gap: 8px;
+      margin-top: 0.75rem;
+    }
+
+    .input-field {
+      flex: 1;
+      background: rgba(0, 0, 0, 0.4);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 10px;
+      padding: 0.6rem 0.8rem;
+      color: #fff;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      outline: none;
+    }
+
+    .input-field:focus {
+      border-color: var(--accent-teal);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(18px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <div class="card">
+      <div class="brand-header">
+        <div class="brand-icon">B</div>
+        <h1 class="brand-title">BioSyncIQ</h1>
+      </div>
+      <p class="subtitle">Practice Detail Enrollment QR & Deep Link</p>
+
+      <div class="info-box">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+        <div>
+          <strong>Why camera only copies `biosynciq://`:</strong> Standard iOS & Android camera scanners treat custom schemes (like <code>biosynciq://</code>) as raw text because they are not <code>https://</code> web links. 
+          Use <strong>Web Redirect Link</strong> below or tap <strong>Open in App</strong> when viewing on device.
+        </div>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-btn active" id="tabDirect" onclick="setMode('direct')">Direct App Scheme</button>
+        <button class="tab-btn" id="tabWeb" onclick="setMode('web')">Web Redirect QR</button>
+      </div>
+
+      <div class="qr-wrapper">
+        <div class="qr-container">
+          <div id="qrcode"></div>
+        </div>
+      </div>
+
+      <div class="link-details">
+        <div class="link-label" id="linkTypeTitle">Active QR Encoded URI</div>
+        <div class="link-uri" id="linkText">biosynciq://practice_detail?enrollment_token=bb4111b3550a6ef5546cf6f89f759bee</div>
+
+        <div id="webUrlConfig" style="display: none;">
+          <div class="link-label" style="margin-top:0.75rem; color:var(--text-muted);">Hosted Web Page URL (for camera scanning):</div>
+          <div class="web-url-input">
+            <input type="text" id="customWebUrl" class="input-field" value="https://yourdomain.com/qr_code.html" placeholder="https://your-server-ip-or-domain/qr_code.html" oninput="updateWebQr()">
+          </div>
+        </div>
+      </div>
+
+      <div class="actions">
+        <a href="biosynciq://practice_detail?enrollment_token=bb4111b3550a6ef5546cf6f89f759bee" class="btn btn-primary" id="openAppLink">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path><polyline points="15 3 21 3 21 9"></polyline><line x1="10" y1="14" x2="21" y2="3"></line></svg>
+          Open in BioSyncIQ App
+        </a>
+
+        <div style="display: flex; gap: 0.75rem;">
+          <button class="btn btn-secondary" style="flex: 1;" onclick="copyLink()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+            Copy Link
+          </button>
+          <button class="btn btn-secondary" style="flex: 1;" onclick="downloadQR()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Download QR
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast">
+    <svg class="toast-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+    <span id="toastMsg">Link copied to clipboard!</span>
+  </div>
+
+  <script>
+    const directSchemeUrl = "biosynciq://practice_detail?enrollment_token=bb4111b3550a6ef5546cf6f89f759bee";
+    let activeUrl = directSchemeUrl;
+    let mode = 'direct';
+
+    // Auto-launch deep link if opened via web browser with ?auto_open=true or from camera redirect
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('auto_open') || urlParams.has('enrollment_token')) {
+      const token = urlParams.get('enrollment_token') || 'bb4111b3550a6ef5546cf6f89f759bee';
+      const targetDeepLink = `biosynciq://practice_detail?enrollment_token=${token}`;
+      window.location.href = targetDeepLink;
+    }
+
+    function setMode(newMode) {
+      mode = newMode;
+      document.getElementById('tabDirect').classList.toggle('active', mode === 'direct');
+      document.getElementById('tabWeb').classList.toggle('active', mode === 'web');
+      document.getElementById('webUrlConfig').style.display = mode === 'web' ? 'block' : 'none';
+
+      if (mode === 'direct') {
+        activeUrl = directSchemeUrl;
+        document.getElementById('linkTypeTitle').innerText = "Active QR Encoded URI (Direct Scheme)";
+      } else {
+        updateWebQr();
+        document.getElementById('linkTypeTitle').innerText = "Active QR Encoded URI (HTTP Web Link)";
+        return;
+      }
+      document.getElementById('linkText').innerText = activeUrl;
+      renderQR();
+    }
+
+    function updateWebQr() {
+      if (mode !== 'web') return;
+      let inputVal = document.getElementById('customWebUrl').value.trim();
+      if (!inputVal) inputVal = window.location.href.split('?')[0];
+
+      // Add auto_open parameter
+      const separator = inputVal.includes('?') ? '&' : '?';
+      activeUrl = `${inputVal}${separator}auto_open=true&enrollment_token=bb4111b3550a6ef5546cf6f89f759bee`;
+      document.getElementById('linkText').innerText = activeUrl;
+      renderQR();
+    }
+
+    function renderQR() {
+      const qrel = document.getElementById("qrcode");
+      qrel.innerHTML = "";
+      if (typeof QRCode !== 'undefined') {
+        new QRCode(qrel, {
+          text: activeUrl,
+          width: 210,
+          height: 210,
+          colorDark : "#060b17",
+          colorLight : "#ffffff",
+          correctLevel : QRCode.CorrectLevel.H
+        });
+      } else {
+        qrel.innerHTML = `<img src="https://api.qrserver.com/v1/create-qr-code/?size=210x210&data=${encodeURIComponent(activeUrl)}" alt="QR Code" width="210" height="210" />`;
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      // Set default input value to current URL if served via http/https
+      if (window.location.protocol.startsWith('http')) {
+        document.getElementById('customWebUrl').value = window.location.href.split('?')[0];
+      }
+      renderQR();
+    });
+
+    function copyLink() {
+      navigator.clipboard.writeText(activeUrl).then(() => {
+        showToast("Copied to clipboard!");
+      }).catch(err => {
+        showToast("Failed to copy link");
+      });
+    }
+
+    function downloadQR() {
+      const qrImg = document.querySelector("#qrcode img");
+      const qrCanvas = document.querySelector("#qrcode canvas");
+
+      let imageSrc = "";
+      if (qrCanvas) {
+        imageSrc = qrCanvas.toDataURL("image/png");
+      } else if (qrImg) {
+        imageSrc = qrImg.src;
+      }
+
+      if (imageSrc) {
+        const link = document.createElement("a");
+        link.href = imageSrc;
+        link.download = `BioSyncIQ_QR_${mode}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        showToast("QR Code download started!");
+      } else {
+        showToast("QR Code image not ready yet");
+      }
+    }
+
+    function showToast(msg) {
+      const toast = document.getElementById("toast");
+      document.getElementById("toastMsg").innerText = msg;
+      toast.classList.add("show");
+      setTimeout(() => {
+        toast.classList.remove("show");
+      }, 3000);
+    }
+  </script>
+</body>
+</html>

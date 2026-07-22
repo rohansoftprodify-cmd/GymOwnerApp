@@ -8,6 +8,7 @@ import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/core/ui/image_crop_page.dart';
+import 'package:gym_owner_app/src/core/utils/phone_utils.dart';
 import 'package:gym_owner_app/src/features/members/models/member_detail.dart';
 import 'package:intl/intl.dart';
 
@@ -200,7 +201,8 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
           gymId: widget.gymId,
           memberId: widget.memberId,
           fullName: _nameController.text.trim(),
-          phone: _phoneController.text.trim(),
+          phone: normalizeMemberPhone(_phoneController.text.trim()) ??
+              _phoneController.text.trim(),
           email: _emailController.text.trim().isEmpty
               ? null
               : _emailController.text.trim(),
@@ -238,7 +240,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
   }
 
   Future<void> _showCredentialsDialog({
-    required String email,
+    required String phone,
     required String password,
     required String title,
   }) async {
@@ -252,7 +254,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
           children: [
             const Text('Share these login details with the member for the Gym Member app:'),
             const SizedBox(height: 12),
-            SelectableText('Email: $email'),
+            SelectableText('Phone: $phone'),
             SelectableText('Password: $password'),
           ],
         ),
@@ -303,24 +305,26 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
             password: password,
           );
         } else {
-          final email = _emailController.text.trim();
-          if (email.isEmpty || !email.contains('@')) {
-            throw Exception('Enter a valid email in Profile before creating app login.');
+          final phone = normalizeMemberPhone(_phoneController.text.trim());
+          if (phone == null) {
+            throw Exception('Enter a valid phone in Profile before creating app login.');
           }
+          final emailRaw = _emailController.text.trim();
           result = await repo.provisionMemberLogin(
             gymId: widget.gymId,
             memberId: widget.memberId,
             password: password,
-            email: email,
+            phone: phone,
+            email: emailRaw.isEmpty ? null : emailRaw,
           );
         }
 
         if (!mounted) return;
         final credentials = result['credentials'] as Map<String, dynamic>?;
-        final email = (credentials?['email'] ?? result['email'] ?? _emailController.text.trim())
+        final phone = (credentials?['phone'] ?? result['phone'] ?? _phoneController.text.trim())
             .toString();
         await _showCredentialsDialog(
-          email: email,
+          phone: phone,
           password: credentials?['password'] as String? ?? password,
           title: detail.hasLogin ? 'Password updated' : 'App login created',
         );
@@ -390,7 +394,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Has member app login · email cannot be changed here',
+                      'Has member app login · phone cannot be changed here',
                       style: theme.textTheme.labelSmall,
                     ),
                   ),
@@ -455,16 +459,27 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                 const SizedBox(height: 10),
                 AppTextField(
                   controller: _phoneController,
-                  label: 'Phone',
+                  label: 'Phone (login)',
                   keyboardType: TextInputType.phone,
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  readOnly: detail.hasLogin,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!isValidMemberPhone(v)) {
+                      return 'Enter a valid 10-digit phone number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
                 AppTextField(
                   controller: _emailController,
-                  label: 'Email',
+                  label: 'Email (optional)',
                   keyboardType: TextInputType.emailAddress,
-                  readOnly: detail.hasLogin,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return null;
+                    if (!v.contains('@')) return 'Enter valid email';
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
@@ -520,8 +535,8 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                 const SizedBox(height: 4),
                 Text(
                   detail.hasLogin
-                      ? 'Set a new password for the Gym Member app. The member signs in with their existing email.'
-                      : 'Create app login credentials. Add a valid email above if missing, then set a password.',
+                      ? 'Set a new password for the Gym Member app. The member signs in with their phone number.'
+                      : 'Create app login credentials. Phone above is used for login; set a password to share.',
                   style: theme.textTheme.bodySmall?.copyWith(color: semantics.mutedText),
                 ),
                 const SizedBox(height: 10),

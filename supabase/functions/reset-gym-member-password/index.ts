@@ -67,7 +67,7 @@ Deno.serve(async (req) => {
 
     const { data: member, error: memberError } = await adminClient
       .from('members')
-      .select('id, user_id, email, full_name')
+      .select('id, user_id, email, phone, full_name')
       .eq('gym_id', payload.gym_id)
       .eq('id', payload.member_id)
       .maybeSingle();
@@ -95,7 +95,13 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         success: true,
+        phone: member.phone,
         email: member.email,
+        credentials: {
+          phone: member.phone,
+          email: member.email,
+          password: payload.password,
+        },
         message: 'Password updated. Share the new password with the member.',
       },
       200,

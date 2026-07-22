@@ -9,7 +9,7 @@ type CreateMemberPayload = {
   gym_id: string;
   full_name: string;
   phone: string;
-  email: string;
+  email?: string | null;
   password: string;
   plan_id: string;
   start_date: string;
@@ -58,6 +58,14 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: validationError }, 400);
     }
 
+    const phone = normalizePhone(payload.phone);
+    if (!phone) {
+      return jsonResponse({ error: 'Enter a valid phone number (10 digits).' }, 400);
+    }
+
+    const emailRaw = payload.email?.trim().toLowerCase() || '';
+    const email = emailRaw.includes('@') ? emailRaw : null;
+
     const { data: staffRole, error: staffRoleError } = await callerClient
       .from('gym_roles')
       .select('role')
@@ -85,12 +93,14 @@ Deno.serve(async (req) => {
     }
 
     const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
-      email: payload.email.trim().toLowerCase(),
+      phone,
       password: payload.password,
-      email_confirm: true,
+      phone_confirm: true,
+      ...(email ? { email, email_confirm: true } : {}),
       user_metadata: {
         full_name: payload.full_name,
         app_role: 'member',
+        login_phone: phone,
       },
     });
 
@@ -106,7 +116,7 @@ Deno.serve(async (req) => {
     const { error: profileError } = await adminClient.from('profiles').upsert({
       id: userId,
       full_name: payload.full_name,
-      phone: payload.phone,
+      phone,
     });
 
     if (profileError) {
@@ -120,8 +130,8 @@ Deno.serve(async (req) => {
         gym_id: payload.gym_id,
         user_id: userId,
         full_name: payload.full_name,
-        phone: payload.phone,
-        email: payload.email.trim().toLowerCase(),
+        phone,
+        email,
         date_of_birth: payload.date_of_birth,
         emergency_contact: payload.emergency_contact,
         notes: payload.notes,
@@ -169,7 +179,8 @@ Deno.serve(async (req) => {
       {
         member,
         credentials: {
-          email: payload.email.trim().toLowerCase(),
+          phone,
+          email,
           password: payload.password,
         },
       },
@@ -184,10 +195,21 @@ function validatePayload(payload: CreateMemberPayload): string | null {
   if (!payload.gym_id) return 'gym_id is required.';
   if (!payload.full_name?.trim()) return 'full_name is required.';
   if (!payload.phone?.trim()) return 'phone is required.';
-  if (!payload.email?.trim()) return 'email is required.';
   if (!payload.password || payload.password.length < 6) return 'password must be at least 6 characters.';
   if (!payload.plan_id) return 'plan_id is required.';
   if (!payload.start_date) return 'start_date is required.';
+  const email = payload.email?.trim();
+  if (email && !email.includes('@')) return 'email must be valid when provided.';
+  return null;
+}
+
+/** Normalize to E.164 (+91XXXXXXXXXX for 10-digit Indian numbers). */
+function normalizePhone(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.length === 10) return `+91${digits}`;
+  if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
+  if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
   return null;
 }
 

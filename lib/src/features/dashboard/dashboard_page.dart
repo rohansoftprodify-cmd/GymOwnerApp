@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/core/auth/single_session_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/gym_setup_provider.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
+import 'package:gym_owner_app/src/core/theme/app_responsive.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/features/dashboard/tabs/attendance_tab.dart';
@@ -249,13 +250,18 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
             child: KeyedSubtree(
               key: ValueKey(_index),
               child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: AppResponsive.pagePadding(MediaQuery.sizeOf(context)),
                 child: pages[_index],
               ),
             ),
           ),
           bottomNavigationBar: SafeArea(
-            minimum: const EdgeInsets.fromLTRB(16, 0, 16, 10),
+            minimum: EdgeInsets.fromLTRB(
+              AppResponsive.isTablet(MediaQuery.sizeOf(context)) ? 24 : 16,
+              0,
+              AppResponsive.isTablet(MediaQuery.sizeOf(context)) ? 24 : 16,
+              10,
+            ),
             child: Container(
               decoration: BoxDecoration(
                 color: semantics.cardBackground,
@@ -280,7 +286,7 @@ class _DashboardPageState extends ConsumerState<DashboardPage> {
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: NavigationBar(
-                  height: 64,
+                  height: AppResponsive.isTablet(MediaQuery.sizeOf(context)) ? 72 : 64,
                   selectedIndex: _index,
                   elevation: 0,
                   backgroundColor: semantics.cardBackground,

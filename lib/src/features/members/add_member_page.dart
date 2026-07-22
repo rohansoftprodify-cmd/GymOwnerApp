@@ -8,6 +8,7 @@ import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/core/ui/app_components.dart';
 import 'package:gym_owner_app/src/core/ui/app_dialogs.dart';
 import 'package:gym_owner_app/src/core/ui/image_crop_page.dart';
+import 'package:gym_owner_app/src/core/utils/phone_utils.dart';
 
 class AddMemberPage extends ConsumerStatefulWidget {
   const AddMemberPage({super.key, required this.gymId});
@@ -102,11 +103,13 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
       context,
       errorTitle: 'Create member failed',
       action: () async {
+        final phone = normalizeMemberPhone(_phoneController.text.trim())!;
+        final emailRaw = _emailController.text.trim();
         final result = await repo.createMemberAccount(
           gymId: widget.gymId,
           fullName: _nameController.text.trim(),
-          phone: _phoneController.text.trim(),
-          email: _emailController.text.trim(),
+          phone: phone,
+          email: emailRaw.isEmpty ? null : emailRaw,
           password: _passwordController.text,
           planId: _planId!,
           startDate: _startDate,
@@ -131,10 +134,8 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               gymId: widget.gymId,
               memberId: memberId,
               fullName: _nameController.text.trim(),
-              phone: _phoneController.text.trim(),
-              email: _emailController.text.trim().isEmpty
-                  ? null
-                  : _emailController.text.trim(),
+              phone: phone,
+              email: emailRaw.isEmpty ? null : emailRaw,
               status: 'active',
               emergencyContact: _emergencyController.text.trim().isEmpty
                   ? null
@@ -157,7 +158,7 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
               children: [
                 const Text('Share these login details with the member for the Gym Member app:'),
                 const SizedBox(height: 12),
-                SelectableText('Email: ${credentials['email'] ?? _emailController.text.trim()}'),
+                SelectableText('Phone: ${credentials['phone'] ?? phone}'),
                 SelectableText('Password: ${credentials['password'] ?? _passwordController.text}'),
               ],
             ),
@@ -255,19 +256,25 @@ class _AddMemberPageState extends ConsumerState<AddMemberPage> {
                 const SizedBox(height: 10),
                 AppTextField(
                   controller: _phoneController,
-                  label: 'Phone',
+                  label: 'Phone (login)',
                   keyboardType: TextInputType.phone,
                   prefixIcon: const Icon(Icons.phone_outlined, size: 18),
-                  validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+                  validator: (v) {
+                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (!isValidMemberPhone(v)) {
+                      return 'Enter a valid 10-digit phone number';
+                    }
+                    return null;
+                  },
                 ),
                 const SizedBox(height: 10),
                 AppTextField(
                   controller: _emailController,
-                  label: 'Email (login)',
+                  label: 'Email (optional)',
                   keyboardType: TextInputType.emailAddress,
                   prefixIcon: const Icon(Icons.email_outlined, size: 18),
                   validator: (v) {
-                    if (v == null || v.trim().isEmpty) return 'Required';
+                    if (v == null || v.trim().isEmpty) return null;
                     if (!v.contains('@')) return 'Enter valid email';
                     return null;
                   },

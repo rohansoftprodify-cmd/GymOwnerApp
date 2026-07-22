@@ -129,7 +129,7 @@ class GymRepository {
     required String gymId,
     required String fullName,
     required String phone,
-    required String email,
+    String? email,
     required String password,
     required String planId,
     required DateTime startDate,
@@ -139,12 +139,13 @@ class GymRepository {
     String? emergencyContact,
     String? notes,
   }) async {
+    final trimmedEmail = email?.trim().toLowerCase();
     final response = await _logApiCall(
       action: 'functions.create-gym-member',
       request: {
         'gym_id': gymId,
         'full_name': fullName,
-        'email': email,
+        'phone': phone,
         'plan_id': planId,
       },
       run: () => _client.functions.invoke(
@@ -153,7 +154,7 @@ class GymRepository {
           'gym_id': gymId,
           'full_name': fullName,
           'phone': phone,
-          'email': email.trim().toLowerCase(),
+          if (trimmedEmail != null && trimmedEmail.isNotEmpty) 'email': trimmedEmail,
           'password': password,
           'plan_id': planId,
           'start_date': startDate.toIso8601String().substring(0, 10),
@@ -198,6 +199,7 @@ class GymRepository {
     required String gymId,
     required String memberId,
     required String password,
+    String? phone,
     String? email,
   }) async {
     return _invokeFunction(
@@ -207,6 +209,7 @@ class GymRepository {
         'gym_id': gymId,
         'member_id': memberId,
         'password': password,
+        if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
         if (email != null && email.trim().isNotEmpty) 'email': email.trim().toLowerCase(),
       },
       defaultError: 'Failed to create app login.',
