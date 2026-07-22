@@ -16,19 +16,22 @@ class _OnboardingPageState extends State<OnboardingPage> {
   List<OnboardingItem> _items(ColorScheme colorScheme) => [
     OnboardingItem(
       title: 'Gym Ops In One Place',
-      description: 'Manage members, attendance, products, and promotions from one dashboard.',
+      description:
+          'Manage members, attendance, products, and promotions from one dashboard.',
       icon: Icons.space_dashboard_rounded,
       accent: colorScheme.primary,
     ),
     OnboardingItem(
       title: 'Fast Daily Attendance',
-      description: 'Mark check-ins/check-outs quickly and monitor active members in real-time.',
+      description:
+          'Mark check-ins/check-outs quickly and monitor active members in real-time.',
       icon: Icons.how_to_reg_rounded,
       accent: colorScheme.secondary,
     ),
     OnboardingItem(
       title: 'Grow Revenue Smarter',
-      description: 'Track pending fees, run offers, and measure sales with clear insights.',
+      description:
+          'Track pending fees, run offers, and measure sales with clear insights.',
       icon: Icons.trending_up_rounded,
       accent: colorScheme.tertiary,
     ),
@@ -53,7 +56,9 @@ class _OnboardingPageState extends State<OnboardingPage> {
                   const SizedBox(width: 10),
                   AppText(
                     'Gym Owner',
-                    style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                 ],
               ),
@@ -70,7 +75,10 @@ class _OnboardingPageState extends State<OnboardingPage> {
                 itemBuilder: (context, index) {
                   final item = items[index];
                   return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -81,11 +89,7 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             shape: BoxShape.circle,
                             color: item.accent.withValues(alpha: 0.1),
                           ),
-                          child: Icon(
-                            item.icon,
-                            size: 64,
-                            color: item.accent,
-                          ),
+                          child: Icon(item.icon, size: 64, color: item.accent),
                         ),
                         const SizedBox(height: 24),
                         AppText(
@@ -139,8 +143,13 @@ class _OnboardingPageState extends State<OnboardingPage> {
                       if (_currentPage != items.length - 1)
                         TextButton(
                           onPressed: () => context.go('/login'),
-                          style: TextButton.styleFrom(visualDensity: VisualDensity.compact),
-                          child: const Text('Skip', style: TextStyle(fontSize: 13)),
+                          style: TextButton.styleFrom(
+                            visualDensity: VisualDensity.compact,
+                          ),
+                          child: const Text(
+                            'Skip',
+                            style: TextStyle(fontSize: 13),
+                          ),
                         )
                       else
                         const Spacer(),
@@ -156,8 +165,12 @@ class _OnboardingPageState extends State<OnboardingPage> {
                             );
                           }
                         },
-                        icon: _currentPage == items.length - 1 ? Icons.login_rounded : Icons.arrow_forward_rounded,
-                        label: _currentPage == items.length - 1 ? 'Start' : 'Next',
+                        icon: _currentPage == items.length - 1
+                            ? Icons.login_rounded
+                            : Icons.arrow_forward_rounded,
+                        label: _currentPage == items.length - 1
+                            ? 'Start'
+                            : 'Next',
                       ),
                     ],
                   ),

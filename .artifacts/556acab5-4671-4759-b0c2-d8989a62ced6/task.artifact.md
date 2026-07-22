@@ -1,0 +1,8 @@
+- [ ] Update Android App Label
+- [ ] Update iOS App Label and Display Name
+- [ ] Update Flutter MaterialApp title
+- [ ] Update Splash Screen text
+- [ ] Update Onboarding Screen text
+- [ ] Add ProGuard rules for release build
+- [ ] Link ProGuard rules in build.gradle
+- [ ] Update main.dart to handle splash dismissal and errors

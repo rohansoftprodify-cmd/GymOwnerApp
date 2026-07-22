@@ -13,7 +13,7 @@ class GymOwnerApp extends ConsumerWidget {
     final themeMode = ref.watch(themeModeProvider);
 
     return MaterialApp.router(
-      title: 'Gym Owner',
+      title: 'Akro Gym',
       themeMode: themeMode,
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
@@ -27,9 +27,7 @@ class GymOwnerApp extends ConsumerWidget {
           data: mediaQuery.copyWith(
             textScaler: TextScaler.linear(systemScale * 1.04),
           ),
-          child: SingleSessionGuard(
-            child: child ?? const SizedBox.shrink(),
-          ),
+          child: SingleSessionGuard(child: child ?? const SizedBox.shrink()),
         );
       },
     );

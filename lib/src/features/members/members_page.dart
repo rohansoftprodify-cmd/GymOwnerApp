@@ -9,9 +9,14 @@ import 'package:gym_owner_app/src/features/members/models/member_list_item.dart'
 import 'package:intl/intl.dart';
 
 class MembersPage extends ConsumerStatefulWidget {
-  const MembersPage({super.key, required this.gymId});
+  const MembersPage({
+    super.key,
+    required this.gymId,
+    this.initialStatus,
+  });
 
   final String gymId;
+  final String? initialStatus;
 
   @override
   ConsumerState<MembersPage> createState() => _MembersPageState();
@@ -117,8 +122,17 @@ class _MembersPageState extends ConsumerState<MembersPage> {
       );
     }
 
+    int initialIndex = 0;
+    if (widget.initialStatus == 'inactive') {
+      initialIndex = 1;
+    } else if (widget.initialStatus == 'left' || widget.initialStatus == 'inactive') {
+      // Note: both 'left' and 'inactive' map to Left Gym / Inactive statuses depending on query
+      initialIndex = widget.initialStatus == 'left' ? 2 : 1;
+    }
+
     return DefaultTabController(
       length: 3,
+      initialIndex: initialIndex,
       child: Scaffold(
         backgroundColor: Colors.transparent,
         appBar: PreferredSize(

@@ -24,11 +24,23 @@ class _SplashPageState extends ConsumerState<SplashPage> {
 
     if (!mounted) return;
 
-    final session = Supabase.instance.client.auth.currentSession;
-    if (session != null) {
-      await navigateAfterSignIn(context, ref);
-    } else {
-      context.go('/onboarding');
+    try {
+      final session = Supabase.instance.client.auth.currentSession;
+      if (session != null) {
+        await navigateAfterSignIn(context, ref);
+      } else {
+        context.go('/onboarding');
+      }
+    } catch (error) {
+      debugPrint('[Splash] Startup exception: $error');
+      // In case of corrupt session tokens, network issues, or table query failures,
+      // clear the session cache and route back to onboarding so the app doesn't freeze.
+      try {
+        await Supabase.instance.client.auth.signOut();
+      } catch (_) {}
+      if (mounted) {
+        context.go('/onboarding');
+      }
     }
   }
 
@@ -63,7 +75,10 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             const SizedBox(
               width: 24,
               height: 24,
-              child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
             ),
           ],
         ),

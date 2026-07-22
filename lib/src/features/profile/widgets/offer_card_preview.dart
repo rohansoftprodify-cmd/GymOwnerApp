@@ -46,7 +46,25 @@ class OfferCardPreview extends StatelessWidget {
     if (raw == null) return Icons.water_drop_outlined;
     final codePoint = int.tryParse(raw);
     if (codePoint == null) return Icons.water_drop_outlined;
-    return IconData(codePoint, fontFamily: 'MaterialIcons');
+
+    switch (codePoint) {
+      case 0xe6ac: // Icons.water_drop_outlined
+        return Icons.water_drop_outlined;
+      case 0xe3aa: // Icons.local_fire_department_outlined
+        return Icons.local_fire_department_outlined;
+      case 0xf080f: // Icons.diamond_outlined
+        return Icons.diamond_outlined;
+      case 0xf5c3: // Icons.bolt_outlined
+        return Icons.bolt_outlined;
+      case 0xe25b: // Icons.favorite_outline
+        return Icons.favorite_outline;
+      case 0xe28e: // Icons.fitness_center_outlined
+        return Icons.fitness_center_outlined;
+      case 0xe3b9: // Icons.local_offer_outlined
+        return Icons.local_offer_outlined;
+      default:
+        return Icons.water_drop_outlined;
+    }
   }
 
   @override
