@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:gym_owner_app/src/core/ai/ai_repository.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
+import 'package:gym_owner_app/src/core/domain/report_calculations.dart';
 import 'package:gym_owner_app/src/core/tenant/tenant_providers.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/ai/models/churn_risk_result.dart';
@@ -118,7 +119,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         final salesForecast = snap.data![8] as SalesForecastResult;
         final pendingOrders = snap.data![9] as List<Map<String, dynamic>>;
         final dues = reports['dues'] as Map<String, dynamic>?;
-        final pendingAmount = dues?['pending_amount'] ?? 0;
+        final dueSummaryAmount = dues?['pending_amount'] ?? 0;
 
         final now = DateTime.now();
         final upcomingCutoff = now.add(const Duration(days: 15));
@@ -133,8 +134,20 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           if (mId != null && leftMemberIds.contains(mId)) {
             return false;
           }
-          return status == 'due' || status == 'partial';
+          final memberObj = s['members'] as Map<String, dynamic>?;
+          final memberStatus = (memberObj?['status'] as String? ?? '').toLowerCase();
+          if (memberStatus == 'left') {
+            return false;
+          }
+          if (status != 'due' && status != 'partial') {
+            return false;
+          }
+          final planPrice = ((s['subscription_plans'] as Map<String, dynamic>?)?['price'] as num?)?.toDouble() ?? 0;
+          final amountPaid = (s['amount_paid'] as num?)?.toDouble() ?? 0;
+          final remaining = pendingAmount(planPrice: planPrice, amountPaid: amountPaid);
+          return remaining > 0;
         }).toList();
+
         final upcomingRenewals = subscriptions.where((s) {
           final raw = s['end_date'] as String?;
           if (raw == null) return false;
@@ -142,6 +155,11 @@ class _HomeTabState extends ConsumerState<HomeTab> {
           if (endDate == null) return false;
           final mId = s['member_id'] as String?;
           if (mId != null && leftMemberIds.contains(mId)) {
+            return false;
+          }
+          final memberObj = s['members'] as Map<String, dynamic>?;
+          final memberStatus = (memberObj?['status'] as String? ?? '').toLowerCase();
+          if (memberStatus == 'left') {
             return false;
           }
           return endDate.isAfter(now.subtract(const Duration(days: 1))) &&
@@ -165,7 +183,13 @@ class _HomeTabState extends ConsumerState<HomeTab> {
 
         final leftCount = members.where((m) => m['status'] == 'left').length;
 
-        final money = NumberFormat('#,##0').format(pendingAmount);
+        final double totalOverdue = pendingFees.fold(0.0, (sum, s) {
+          final planPrice = ((s['subscription_plans'] as Map<String, dynamic>?)?['price'] as num?)?.toDouble() ?? 0;
+          final amountPaid = (s['amount_paid'] as num?)?.toDouble() ?? 0;
+          return sum + pendingAmount(planPrice: planPrice, amountPaid: amountPaid);
+        });
+
+        final money = NumberFormat('#,##0').format(totalOverdue);
 
         return RefreshIndicator(
           onRefresh: _onRefresh,
@@ -253,7 +277,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           : '${pendingFees.length} pending',
                       onTap: pendingFees.isEmpty
                           ? null
-                          : () => showFeeListSheet(context, pendingFees, 'Pending Fees'),
+                          : () => showFeeListSheet(context, ref, pendingFees, 'Pending Fees'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -268,6 +292,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                           ? null
                           : () => showFeeListSheet(
                                 context,
+                                ref,
                                 upcomingRenewals,
                                 'Upcoming Renewals',
                                 mode: FeeListMode.renewals,
@@ -286,7 +311,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                       icon: Icons.person_remove_rounded,
                       color: colorScheme.outline,
                       subtitle: 'Exited members',
-                      onTap: () => context.push('/members?gymId=${widget.gymId}'),
+                      onTap: () => context.push('/members?gymId=${widget.gymId}&tab=left'),
                     ),
                   ),
                   const SizedBox(width: 10),
@@ -332,7 +357,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 SectionHeader(
                   title: 'Pending fees',
                   actionLabel: 'Details',
-                  onAction: () => showFeeListSheet(context, pendingFees, 'Pending Fees'),
+                  onAction: () => showFeeListSheet(context, ref, pendingFees, 'Pending Fees'),
                 ),
                 const SizedBox(height: 6),
                 FeeHorizontalList(
@@ -348,6 +373,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   actionLabel: 'Full list',
                   onAction: () => showFeeListSheet(
                     context,
+                    ref,
                     upcomingRenewals,
                     'Upcoming Renewals',
                     mode: FeeListMode.renewals,

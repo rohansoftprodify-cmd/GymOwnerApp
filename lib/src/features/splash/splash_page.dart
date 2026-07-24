@@ -44,7 +44,7 @@ class _SplashPageState extends ConsumerState<SplashPage> {
             const AppLogo(size: 88, borderRadius: 20),
             const SizedBox(height: 16),
             Text(
-              'GYM OWNER',
+              'AKRO GYM OWNER',
               style: theme.textTheme.titleLarge?.copyWith(
                 color: Colors.white,
                 fontWeight: FontWeight.w800,

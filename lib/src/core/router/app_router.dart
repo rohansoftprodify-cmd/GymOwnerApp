@@ -157,13 +157,11 @@ final appRouter = GoRouter(
       path: '/members',
       builder: (_, state) {
         final gymId = state.uri.queryParameters['gymId'];
+        final initialTab = state.uri.queryParameters['tab'];
         if (gymId == null || gymId.isEmpty) {
           return const Scaffold(body: Center(child: Text('Missing gym id')));
         }
-        return Scaffold(
-          appBar: AppBar(title: const Text('Members')),
-          body: MembersPage(gymId: gymId),
-        );
+        return MembersPage(gymId: gymId, initialTab: initialTab);
       },
     ),
     GoRoute(

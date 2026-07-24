@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/domain/report_calculations.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:intl/intl.dart';
 
 enum FeeListMode { pendingFees, renewals }
 
-class FeeHorizontalList extends StatelessWidget {
+class FeeHorizontalList extends ConsumerWidget {
   const FeeHorizontalList({
     super.key,
     required this.items,
@@ -18,7 +20,7 @@ class FeeHorizontalList extends StatelessWidget {
   final FeeListMode mode;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
     final semantics = context.appColors;
@@ -64,9 +66,9 @@ class FeeHorizontalList extends StatelessWidget {
         itemBuilder: (_, i) {
           final item = items[i];
           if (mode == FeeListMode.renewals) {
-            return _RenewalCard(item: item);
+            return _RenewalCard(item: item, ref: ref);
           }
-          return _PendingFeeCard(item: item);
+          return _PendingFeeCard(item: item, ref: ref);
         },
       ),
     );
@@ -74,9 +76,10 @@ class FeeHorizontalList extends StatelessWidget {
 }
 
 class _PendingFeeCard extends StatelessWidget {
-  const _PendingFeeCard({required this.item});
+  const _PendingFeeCard({required this.item, required this.ref});
 
   final Map<String, dynamic> item;
+  final WidgetRef ref;
 
   @override
   Widget build(BuildContext context) {
@@ -106,6 +109,11 @@ class _PendingFeeCard extends StatelessWidget {
     final dueLabel = endDateRaw != null
         ? 'Due ${DateFormat.yMMMd().format(DateTime.parse(endDateRaw))}'
         : 'Due —';
+
+    final avatarPath =
+        ((item['members'] as Map<String, dynamic>?)?['avatar_url'] as String?);
+    final resolvedAvatarUrl =
+        ref.read(gymRepositoryProvider).memberAvatarUrl(avatarPath);
 
     return SizedBox(
       width: 280,
@@ -138,13 +146,33 @@ class _PendingFeeCard extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            member.toString(),
-                            style: theme.textTheme.titleSmall?.copyWith(
-                              fontWeight: FontWeight.w800,
-                            ),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
+                          Row(
+                            children: [
+                              CircleAvatar(
+                                radius: 10,
+                                backgroundColor: colorScheme.primary.withValues(alpha: 0.1),
+                                backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
+                                    ? NetworkImage(resolvedAvatarUrl)
+                                    : null,
+                                child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
+                                    ? Text(
+                                        member.toString().trim().isEmpty ? '?' : member.toString()[0].toUpperCase(),
+                                        style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: colorScheme.primary),
+                                      )
+                                    : null,
+                              ),
+                              const SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  member.toString(),
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -250,9 +278,10 @@ class _PendingFeeCard extends StatelessWidget {
 }
 
 class _RenewalCard extends StatelessWidget {
-  const _RenewalCard({required this.item});
+  const _RenewalCard({required this.item, required this.ref});
 
   final Map<String, dynamic> item;
+  final WidgetRef ref;
 
   @override
   Widget build(BuildContext context) {
@@ -271,6 +300,11 @@ class _RenewalCard extends StatelessWidget {
     final daysLeft = renewalDaysLeft(endDateRaw);
     final daysLabel = renewalDaysLabel(daysLeft);
 
+    final avatarPath =
+        ((item['members'] as Map<String, dynamic>?)?['avatar_url'] as String?);
+    final resolvedAvatarUrl =
+        ref.read(gymRepositoryProvider).memberAvatarUrl(avatarPath);
+
     return SizedBox(
       width: 260,
       child: Container(
@@ -287,16 +321,21 @@ class _RenewalCard extends StatelessWidget {
             CircleAvatar(
               radius: 22,
               backgroundColor: colorScheme.primary.withValues(alpha: 0.2),
-              child: Text(
-                member.toString().trim().isEmpty
-                    ? '?'
-                    : member.toString()[0].toUpperCase(),
-                style: TextStyle(
-                  color: colorScheme.primary,
-                  fontWeight: FontWeight.w800,
-                  fontSize: 16,
-                ),
-              ),
+              backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
+                  ? NetworkImage(resolvedAvatarUrl)
+                  : null,
+              child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
+                  ? Text(
+                      member.toString().trim().isEmpty
+                          ? '?'
+                          : member.toString()[0].toUpperCase(),
+                      style: TextStyle(
+                        color: colorScheme.primary,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 16,
+                      ),
+                    )
+                  : null,
             ),
             const SizedBox(width: 12),
             Expanded(

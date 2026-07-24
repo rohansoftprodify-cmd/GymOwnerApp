@@ -46,7 +46,18 @@ class OfferCardPreview extends StatelessWidget {
     if (raw == null) return Icons.water_drop_outlined;
     final codePoint = int.tryParse(raw);
     if (codePoint == null) return Icons.water_drop_outlined;
-    return IconData(codePoint, fontFamily: 'MaterialIcons');
+
+    // Use a predefined map of constants to avoid "non-constant IconData" tree-shaking error.
+    final iconMap = {
+      Icons.water_drop_outlined.codePoint: Icons.water_drop_outlined,
+      Icons.local_fire_department_outlined.codePoint: Icons.local_fire_department_outlined,
+      Icons.diamond_outlined.codePoint: Icons.diamond_outlined,
+      Icons.bolt_outlined.codePoint: Icons.bolt_outlined,
+      Icons.favorite_outline.codePoint: Icons.favorite_outline,
+      Icons.fitness_center_outlined.codePoint: Icons.fitness_center_outlined,
+    };
+
+    return iconMap[codePoint] ?? Icons.water_drop_outlined;
   }
 
   @override

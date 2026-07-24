@@ -92,17 +92,20 @@ Deno.serve(async (req) => {
 
     const emailRaw = (payload.email?.trim() || (member.email as string | null)?.trim() || '')
       .toLowerCase();
-    const email = emailRaw.includes('@') ? emailRaw : null;
+    const memberEmail = emailRaw.includes('@') ? emailRaw : null;
+    const authEmail = memberEmail ?? `${phone.replace(/\D/g, '')}@members.local`;
 
     const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
       phone,
+      email: authEmail,
       password: payload.password,
       phone_confirm: true,
-      ...(email ? { email, email_confirm: true } : {}),
+      email_confirm: true,
       user_metadata: {
         full_name: member.full_name,
         app_role: 'member',
         login_phone: phone,
+        synthetic_email: !memberEmail,
       },
     });
 
@@ -124,7 +127,7 @@ Deno.serve(async (req) => {
     }
 
     const memberPatch: Record<string, unknown> = { user_id: userId, phone };
-    if (email) memberPatch.email = email;
+    if (memberEmail) memberPatch.email = memberEmail;
 
     const { error: memberUpdateError } = await adminClient
       .from('members')
@@ -152,7 +155,7 @@ Deno.serve(async (req) => {
     return jsonResponse(
       {
         success: true,
-        credentials: { phone, email, password: payload.password },
+        credentials: { phone, email: memberEmail, password: payload.password },
         message: 'App login created. Share credentials with the member.',
       },
       200,

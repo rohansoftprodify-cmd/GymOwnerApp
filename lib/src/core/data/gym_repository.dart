@@ -92,7 +92,7 @@ class GymRepository {
       run: () => _client
           .from('members')
           .select(
-            'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, left_at, left_message, extra_days, extra_amount, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
+            'id, full_name, email, phone, status, joined_on, user_id, date_of_birth, emergency_contact, notes, left_at, left_message, extra_days, extra_amount, avatar_url, member_subscriptions(id, plan_id, start_date, end_date, payment_status, amount_paid, status, subscription_plans(id, name, price, duration_days))',
           )
           .eq('gym_id', gymId)
           .eq('id', memberId)
@@ -467,7 +467,7 @@ class GymRepository {
       run: () => _client
           .from('member_subscriptions')
           .select(
-            'id, start_date, end_date, payment_status, amount_paid, members(full_name), subscription_plans(name, price)',
+            'id, member_id, start_date, end_date, payment_status, amount_paid, members(full_name, avatar_url, status), subscription_plans(name, price)',
           )
           .eq('gym_id', gymId)
           .order('created_at', ascending: false),

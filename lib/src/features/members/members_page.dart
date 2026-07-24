@@ -9,9 +9,10 @@ import 'package:gym_owner_app/src/features/members/models/member_list_item.dart'
 import 'package:intl/intl.dart';
 
 class MembersPage extends ConsumerStatefulWidget {
-  const MembersPage({super.key, required this.gymId});
+  const MembersPage({super.key, required this.gymId, this.initialTab});
 
   final String gymId;
+  final String? initialTab;
 
   @override
   ConsumerState<MembersPage> createState() => _MembersPageState();
@@ -20,11 +21,19 @@ class MembersPage extends ConsumerStatefulWidget {
 class _MembersPageState extends ConsumerState<MembersPage> {
   bool _loading = true;
   List<MemberListItem> _members = [];
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) => _load());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -72,9 +81,17 @@ class _MembersPageState extends ConsumerState<MembersPage> {
     final colorScheme = theme.colorScheme;
     final semantics = context.appColors;
 
-    final activeMembers = _members.where((m) => m.status == 'active').toList();
-    final inactiveMembers = _members.where((m) => m.status == 'inactive').toList();
-    final leftMembers = _members.where((m) => m.status == 'left').toList();
+    final filteredMembers = _members.where((m) {
+      if (_searchQuery.isEmpty) return true;
+      final q = _searchQuery.toLowerCase();
+      return m.fullName.toLowerCase().contains(q) ||
+          m.phone.contains(q) ||
+          (m.email?.toLowerCase().contains(q) ?? false);
+    }).toList();
+
+    final activeMembers = filteredMembers.where((m) => m.status == 'active').toList();
+    final inactiveMembers = filteredMembers.where((m) => m.status == 'inactive').toList();
+    final leftMembers = filteredMembers.where((m) => m.status == 'left').toList();
 
     Widget buildList(List<MemberListItem> list, String emptyMessage) {
       if (list.isEmpty) {
@@ -117,22 +134,66 @@ class _MembersPageState extends ConsumerState<MembersPage> {
       );
     }
 
+    int initialIndex = 0;
+    if (widget.initialTab == 'inactive') {
+      initialIndex = 1;
+    } else if (widget.initialTab == 'left') {
+      initialIndex = 2;
+    }
+
     return DefaultTabController(
       length: 3,
+      initialIndex: initialIndex,
       child: Scaffold(
-        backgroundColor: Colors.transparent,
-        appBar: PreferredSize(
-          preferredSize: const Size.fromHeight(48),
-          child: TabBar(
-            labelColor: colorScheme.primary,
-            unselectedLabelColor: semantics.mutedText,
-            indicatorColor: colorScheme.primary,
-            dividerColor: Colors.transparent,
-            tabs: [
-              Tab(text: 'Active (${activeMembers.length})'),
-              Tab(text: 'Inactive (${inactiveMembers.length})'),
-              Tab(text: 'Left Gym (${leftMembers.length})'),
-            ],
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          scrolledUnderElevation: 0,
+          titleSpacing: 16,
+          title: Container(
+            height: 42,
+            decoration: BoxDecoration(
+              color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: TextField(
+              controller: _searchController,
+              onChanged: (v) => setState(() => _searchQuery = v),
+              style: const TextStyle(fontSize: 14),
+              decoration: InputDecoration(
+                hintText: 'Search by name, phone or email...',
+                hintStyle: TextStyle(color: semantics.mutedText, fontSize: 13),
+                prefixIcon: Icon(Icons.search_rounded, size: 20, color: colorScheme.primary),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        onPressed: () {
+                          _searchController.clear();
+                          setState(() => _searchQuery = '');
+                        },
+                      )
+                    : null,
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 10),
+              ),
+            ),
+          ),
+          bottom: PreferredSize(
+            preferredSize: const Size.fromHeight(48),
+            child: TabBar(
+              labelColor: colorScheme.primary,
+              unselectedLabelColor: semantics.mutedText,
+              indicatorColor: colorScheme.primary,
+              indicatorSize: TabBarIndicatorSize.label,
+              dividerColor: Colors.transparent,
+              labelStyle: const TextStyle(fontWeight: FontWeight.w800, fontSize: 12),
+              unselectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
+              tabs: [
+                Tab(text: 'Active (${activeMembers.length})'),
+                Tab(text: 'Inactive (${inactiveMembers.length})'),
+                Tab(text: 'Left Gym (${leftMembers.length})'),
+              ],
+            ),
           ),
         ),
         body: Stack(
@@ -179,6 +240,18 @@ class _MemberCard extends StatelessWidget {
   final String? resolvedAvatarUrl;
   final VoidCallback onTap;
 
+  Widget _buildFallbackAvatar(ThemeData theme, ColorScheme colorScheme) {
+    return Center(
+      child: Text(
+        member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
+        style: theme.textTheme.headlineSmall?.copyWith(
+          color: colorScheme.primary,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -197,22 +270,25 @@ class _MemberCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.35)),
           ),
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
           child: Row(
             children: [
-              CircleAvatar(
-                backgroundColor: colorScheme.primary.withValues(alpha: 0.15),
-                backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl!.isNotEmpty
-                    ? NetworkImage(resolvedAvatarUrl!)
-                    : null,
-                child: resolvedAvatarUrl == null || resolvedAvatarUrl!.isEmpty
-                    ? Text(
-                        member.fullName.isNotEmpty ? member.fullName[0].toUpperCase() : '?',
-                        style: TextStyle(color: colorScheme.primary, fontWeight: FontWeight.w800),
-                      )
-                    : null,
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: Container(
+                  width: 68,
+                  height: 68,
+                  color: colorScheme.primary.withValues(alpha: 0.15),
+                  child: resolvedAvatarUrl != null && resolvedAvatarUrl!.isNotEmpty
+                      ? Image.network(
+                          resolvedAvatarUrl!,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, __, ___) => _buildFallbackAvatar(theme, colorScheme),
+                        )
+                      : _buildFallbackAvatar(theme, colorScheme),
+                ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 18),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,

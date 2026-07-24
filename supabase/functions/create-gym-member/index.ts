@@ -64,7 +64,10 @@ Deno.serve(async (req) => {
     }
 
     const emailRaw = payload.email?.trim().toLowerCase() || '';
-    const email = emailRaw.includes('@') ? emailRaw : null;
+    // Real email for the members row (optional). Auth always gets an address
+    // because some projects still require email even when phone login is used.
+    const memberEmail = emailRaw.includes('@') ? emailRaw : null;
+    const authEmail = memberEmail ?? phoneAuthEmail(phone);
 
     const { data: staffRole, error: staffRoleError } = await callerClient
       .from('gym_roles')
@@ -94,13 +97,15 @@ Deno.serve(async (req) => {
 
     const { data: createdUser, error: createUserError } = await adminClient.auth.admin.createUser({
       phone,
+      email: authEmail,
       password: payload.password,
       phone_confirm: true,
-      ...(email ? { email, email_confirm: true } : {}),
+      email_confirm: true,
       user_metadata: {
         full_name: payload.full_name,
         app_role: 'member',
         login_phone: phone,
+        synthetic_email: !memberEmail,
       },
     });
 
@@ -131,7 +136,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         full_name: payload.full_name,
         phone,
-        email,
+        email: memberEmail,
         date_of_birth: payload.date_of_birth,
         emergency_contact: payload.emergency_contact,
         notes: payload.notes,
@@ -180,7 +185,7 @@ Deno.serve(async (req) => {
         member,
         credentials: {
           phone,
-          email,
+          email: memberEmail,
           password: payload.password,
         },
       },
@@ -211,6 +216,11 @@ function normalizePhone(raw: string): string | null {
   if (digits.length === 12 && digits.startsWith('91')) return `+${digits}`;
   if (digits.length >= 11 && digits.length <= 15) return `+${digits}`;
   return null;
+}
+
+/** Placeholder Auth email when the owner leaves email blank (login still uses phone). */
+function phoneAuthEmail(e164: string): string {
+  return `${e164.replace(/\D/g, '')}@members.local`;
 }
 
 function addDays(isoDate: string, days: number): string {

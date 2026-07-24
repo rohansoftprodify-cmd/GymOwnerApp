@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/domain/report_calculations.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/exclusive_offer_card.dart';
@@ -8,6 +10,7 @@ import 'package:intl/intl.dart';
 
 void showFeeListSheet(
   BuildContext context,
+  WidgetRef ref,
   List<Map<String, dynamic>> items,
   String title, {
   FeeListMode mode = FeeListMode.pendingFees,
@@ -81,6 +84,11 @@ void showFeeListSheet(
                             renewalDaysLeft(item['end_date'] as String?);
                         final daysLabel = renewalDaysLabel(daysLeft);
 
+                        final avatarPath =
+                            ((item['members'] as Map<String, dynamic>?)?['avatar_url'] as String?);
+                        final resolvedAvatarUrl =
+                            ref.read(gymRepositoryProvider).memberAvatarUrl(avatarPath);
+
                         return Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
@@ -96,20 +104,25 @@ void showFeeListSheet(
                           child: Row(
                             children: [
                               CircleAvatar(
-                                radius: 16,
+                                radius: 20,
                                 backgroundColor: Theme.of(
                                   context,
                                 ).colorScheme.primaryContainer,
-                                child: Text(
-                                  member[0].toUpperCase(),
-                                  style: TextStyle(
-                                    color: Theme.of(
-                                      context,
-                                    ).colorScheme.primary,
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 12,
-                                  ),
-                                ),
+                                backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
+                                    ? NetworkImage(resolvedAvatarUrl)
+                                    : null,
+                                child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
+                                    ? Text(
+                                        member[0].toUpperCase(),
+                                        style: TextStyle(
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 12,
+                                        ),
+                                      )
+                                    : null,
                               ),
                               const SizedBox(width: 12),
                               Expanded(

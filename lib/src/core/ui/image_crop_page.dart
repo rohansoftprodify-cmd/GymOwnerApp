@@ -8,11 +8,76 @@ import 'package:image_picker/image_picker.dart';
 /// Returns cropped bytes, or null if the user cancels.
 Future<Uint8List?> pickAndCropImage(
   BuildContext context, {
-  ImageSource source = ImageSource.gallery,
+  ImageSource? source,
   double? aspectRatio = 1,
   String cropTitle = 'Crop image',
 }) async {
-  final file = await ImagePicker().pickImage(source: source);
+  ImageSource? selectedSource = source;
+
+  selectedSource ??= await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        final theme = Theme.of(context);
+        final colorScheme = theme.colorScheme;
+        return Container(
+          decoration: BoxDecoration(
+            color: theme.dialogBackgroundColor ?? theme.scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
+          child: SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 40,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: 20),
+                  decoration: BoxDecoration(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                Text(
+                  'Select Profile Picture',
+                  style: theme.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _SourceOption(
+                      icon: Icons.camera_alt_rounded,
+                      label: 'Camera',
+                      onTap: () => Navigator.of(context).pop(ImageSource.camera),
+                    ),
+                    _SourceOption(
+                      icon: Icons.photo_library_rounded,
+                      label: 'Gallery',
+                      onTap: () => Navigator.of(context).pop(ImageSource.gallery),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+
+  if (selectedSource == null) return null;
+
+  // Set maxWidth, maxHeight to 300px and imageQuality to 70
+  // to ensure picture size is in KBs only (extremely compact).
+  final file = await ImagePicker().pickImage(
+    source: selectedSource,
+    maxWidth: 300,
+    maxHeight: 300,
+    imageQuality: 70,
+  );
   if (file == null) return null;
 
   final bytes = await file.readAsBytes();
@@ -27,6 +92,52 @@ Future<Uint8List?> pickAndCropImage(
       ),
     ),
   );
+}
+
+class _SourceOption extends StatelessWidget {
+  const _SourceOption({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: 110,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: colorScheme.outlineVariant.withValues(alpha: 0.3),
+          ),
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 28, color: colorScheme.primary),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: theme.textTheme.labelMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class ImageCropPage extends StatefulWidget {
