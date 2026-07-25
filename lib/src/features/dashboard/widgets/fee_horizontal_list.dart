@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
 import 'package:gym_owner_app/src/core/domain/report_calculations.dart';
 import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
+import 'package:gym_owner_app/src/features/members/member_detail_page.dart';
 import 'package:intl/intl.dart';
 
 enum FeeListMode { pendingFees, renewals }
@@ -13,11 +14,13 @@ class FeeHorizontalList extends ConsumerWidget {
     required this.items,
     required this.emptyText,
     this.mode = FeeListMode.pendingFees,
+    this.onRefresh,
   });
 
   final List<Map<String, dynamic>> items;
   final String emptyText;
   final FeeListMode mode;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -66,9 +69,9 @@ class FeeHorizontalList extends ConsumerWidget {
         itemBuilder: (_, i) {
           final item = items[i];
           if (mode == FeeListMode.renewals) {
-            return _RenewalCard(item: item, ref: ref);
+            return _RenewalCard(item: item, ref: ref, onRefresh: onRefresh);
           }
-          return _PendingFeeCard(item: item, ref: ref);
+          return _PendingFeeCard(item: item, ref: ref, onRefresh: onRefresh);
         },
       ),
     );
@@ -76,10 +79,15 @@ class FeeHorizontalList extends ConsumerWidget {
 }
 
 class _PendingFeeCard extends StatelessWidget {
-  const _PendingFeeCard({required this.item, required this.ref});
+  const _PendingFeeCard({
+    required this.item,
+    required this.ref,
+    this.onRefresh,
+  });
 
   final Map<String, dynamic> item;
   final WidgetRef ref;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -249,18 +257,27 @@ class _PendingFeeCard extends StatelessWidget {
                           ),
                         ),
                         const Spacer(),
-                        OutlinedButton(
-                          onPressed: () {},
-                          style: OutlinedButton.styleFrom(
+                        FilledButton(
+                          onPressed: () {
+                            showDialog<void>(
+                              context: context,
+                              builder: (_) => _CollectFeeDialog(
+                                item: item,
+                                ref: ref,
+                                onRefresh: onRefresh,
+                              ),
+                            );
+                          },
+                          style: FilledButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,
-                              vertical: 12,
+                              vertical: 10,
                             ),
                             minimumSize: Size.zero,
                             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
                           child: const Text(
-                            'Notify',
+                            'Collect',
                             style: TextStyle(fontSize: 11),
                           ),
                         ),
@@ -278,10 +295,15 @@ class _PendingFeeCard extends StatelessWidget {
 }
 
 class _RenewalCard extends StatelessWidget {
-  const _RenewalCard({required this.item, required this.ref});
+  const _RenewalCard({
+    required this.item,
+    required this.ref,
+    this.onRefresh,
+  });
 
   final Map<String, dynamic> item;
   final WidgetRef ref;
+  final VoidCallback? onRefresh;
 
   @override
   Widget build(BuildContext context) {
@@ -305,76 +327,276 @@ class _RenewalCard extends StatelessWidget {
     final resolvedAvatarUrl =
         ref.read(gymRepositoryProvider).memberAvatarUrl(avatarPath);
 
+    final memberId = item['member_id'] as String?;
+    final gymId = item['gym_id'] as String?;
+
     return SizedBox(
       width: 260,
-      child: Container(
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: semantics.cardBackground,
+      child: Material(
+        color: semantics.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: (memberId == null || gymId == null)
+              ? null
+              : () async {
+                  final saved = await Navigator.of(context).push<bool>(
+                    MaterialPageRoute(
+                      builder: (_) => MemberDetailPage(
+                        gymId: gymId,
+                        memberId: memberId,
+                      ),
+                    ),
+                  );
+                  if (saved == true && onRefresh != null) {
+                    onRefresh!();
+                  }
+                },
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Row(
+              children: [
+                CircleAvatar(
+                  radius: 22,
+                  backgroundColor: colorScheme.primary.withValues(alpha: 0.2),
+                  backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
+                      ? NetworkImage(resolvedAvatarUrl)
+                      : null,
+                  child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
+                      ? Text(
+                          member.toString().trim().isEmpty
+                              ? '?'
+                              : member.toString()[0].toUpperCase(),
+                          style: TextStyle(
+                            color: colorScheme.primary,
+                            fontWeight: FontWeight.w800,
+                            fontSize: 16,
+                          ),
+                        )
+                      : null,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        member.toString(),
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        plan.toString(),
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantics.mutedText,
+                          fontSize: 11,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  daysLabel,
+                  style: TextStyle(
+                    color: semantics.accentLime,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        child: Row(
+      ),
+    );
+  }
+}
+
+class _CollectFeeDialog extends StatefulWidget {
+  const _CollectFeeDialog({
+    required this.item,
+    required this.ref,
+    this.onRefresh,
+  });
+
+  final Map<String, dynamic> item;
+  final WidgetRef ref;
+  final VoidCallback? onRefresh;
+
+  @override
+  State<_CollectFeeDialog> createState() => _CollectFeeDialogState();
+}
+
+class _CollectFeeDialogState extends State<_CollectFeeDialog> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _amountController;
+  late double _planPrice;
+  late double _currentAmountPaid;
+  late String _paymentStatus;
+  bool _saving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _planPrice = ((widget.item['subscription_plans'] as Map<String, dynamic>?)?['price'] as num?)?.toDouble() ?? 0;
+    _currentAmountPaid = (widget.item['amount_paid'] as num?)?.toDouble() ?? 0;
+    _paymentStatus = (widget.item['payment_status'] as String? ?? 'due').toLowerCase();
+    _amountController = TextEditingController(text: _currentAmountPaid.toStringAsFixed(0));
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _updateStatusFromAmount(double paidAmount) {
+    setState(() {
+      _currentAmountPaid = paidAmount;
+      if (paidAmount >= _planPrice) {
+        _paymentStatus = 'paid';
+      } else if (paidAmount <= 0) {
+        _paymentStatus = 'due';
+      } else {
+        _paymentStatus = 'partial';
+      }
+    });
+  }
+
+  Future<void> _save() async {
+    if (!_formKey.currentState!.validate()) return;
+    final newPaid = double.tryParse(_amountController.text) ?? 0;
+    final subscriptionId = widget.item['id'] as String;
+
+    setState(() => _saving = true);
+    try {
+      final repo = widget.ref.read(gymRepositoryProvider);
+      await repo.updatePaymentStatusAndAmount(
+        subscriptionId: subscriptionId,
+        paymentStatus: _paymentStatus,
+        amountPaid: newPaid,
+      );
+
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Payment status updated successfully.')),
+      );
+      if (widget.onRefresh != null) {
+        widget.onRefresh!();
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to update: $e')),
+      );
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final memberName = (widget.item['members'] as Map<String, dynamic>? ?? const {})['full_name'] ?? 'Unknown';
+    final planName = (widget.item['subscription_plans'] as Map<String, dynamic>? ?? const {})['name'] ?? '-';
+    final remaining = _planPrice - _currentAmountPaid;
+
+    return AlertDialog(
+      title: const Text('Collect Fee'),
+      content: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            CircleAvatar(
-              radius: 22,
-              backgroundColor: colorScheme.primary.withValues(alpha: 0.2),
-              backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
-                  ? NetworkImage(resolvedAvatarUrl)
-                  : null,
-              child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
-                  ? Text(
-                      member.toString().trim().isEmpty
-                          ? '?'
-                          : member.toString()[0].toUpperCase(),
-                      style: TextStyle(
-                        color: colorScheme.primary,
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                      ),
-                    )
-                  : null,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(
-                    member.toString(),
-                    style: theme.textTheme.titleSmall?.copyWith(
-                      fontWeight: FontWeight.w800,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    plan.toString(),
-                    style: theme.textTheme.labelSmall?.copyWith(
-                      color: semantics.mutedText,
-                      fontSize: 11,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
-            ),
             Text(
-              daysLabel,
-              style: TextStyle(
-                color: semantics.accentLime,
-                fontWeight: FontWeight.w800,
-                fontSize: 12,
+              memberName.toString(),
+              style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Plan: $planName (Price: ₹${_planPrice.toStringAsFixed(0)})',
+              style: theme.textTheme.bodyMedium?.copyWith(color: colorScheme.outline),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Remaining Due: ₹${remaining < 0 ? 0 : remaining.toStringAsFixed(0)}',
+              style: theme.textTheme.bodyMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: remaining > 0 ? colorScheme.error : colorScheme.primary,
               ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _amountController,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: 'Total Amount Paid (₹)',
+                prefixText: '₹ ',
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (val) {
+                final amount = double.tryParse(val) ?? 0;
+                _updateStatusFromAmount(amount);
+              },
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) return 'Enter amount';
+                if (double.tryParse(val) == null) return 'Enter valid number';
+                return null;
+              },
+            ),
+            const SizedBox(height: 16),
+            DropdownButtonFormField<String>(
+              value: _paymentStatus,
+              decoration: const InputDecoration(
+                labelText: 'Payment Status',
+                border: OutlineInputBorder(),
+              ),
+              items: const [
+                DropdownMenuItem(value: 'paid', child: Text('PAID')),
+                DropdownMenuItem(value: 'partial', child: Text('PARTIAL')),
+                DropdownMenuItem(value: 'due', child: Text('DUE')),
+              ],
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() => _paymentStatus = val);
+                }
+              },
             ),
           ],
         ),
       ),
+      actions: [
+        TextButton(
+          onPressed: _saving ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: _saving ? null : _save,
+          child: _saving
+              ? const SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                )
+              : const Text('Save'),
+        ),
+      ],
     );
   }
 }

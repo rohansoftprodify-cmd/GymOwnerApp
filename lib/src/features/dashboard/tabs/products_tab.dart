@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym_owner_app/src/core/data/repository_providers.dart';
+import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/product_grid_tile.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/products_category_section.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/products_dialogs.dart';
@@ -19,11 +20,22 @@ class ProductsTab extends ConsumerStatefulWidget {
 class _ProductsTabState extends ConsumerState<ProductsTab> {
   String? _selectedCategoryId;
   int _reloadToken = 0;
+  String _searchQuery = '';
+  final _searchController = TextEditingController();
 
   void _refresh() => setState(() => _reloadToken++);
 
   @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final semantics = context.appColors;
     final repo = ref.watch(gymRepositoryProvider);
 
     return Scaffold(
@@ -32,7 +44,10 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
         key: ValueKey(_reloadToken),
         future: Future.wait<dynamic>([
           repo.categories(widget.gymId),
-          repo.products(widget.gymId, categoryId: _selectedCategoryId),
+          repo.products(
+            widget.gymId,
+            categoryId: _searchQuery.isNotEmpty ? null : _selectedCategoryId,
+          ),
         ]),
         builder: (_, snap) {
           if (!snap.hasData) {
@@ -46,13 +61,57 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
               c['id'] as String: c['name'] as String? ?? '-',
           };
 
+          final filteredProducts = products.where((p) {
+            if (_searchQuery.isEmpty) return true;
+            final name = (p['name'] as String? ?? '').toLowerCase();
+            return name.contains(_searchQuery.toLowerCase());
+          }).toList();
+
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              Container(
+                height: 42,
+                decoration: BoxDecoration(
+                  color: colorScheme.surfaceContainerHighest.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+                  ),
+                ),
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (v) => setState(() => _searchQuery = v),
+                  style: const TextStyle(fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Search products by name...',
+                    hintStyle: TextStyle(color: semantics.mutedText, fontSize: 13),
+                    prefixIcon: Icon(Icons.search_rounded, size: 20, color: colorScheme.primary),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 18),
+                            onPressed: () {
+                              _searchController.clear();
+                              setState(() => _searchQuery = '');
+                            },
+                          )
+                        : null,
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 6),
               ProductsCategorySection(
                 categories: categories,
-                selectedCategoryId: _selectedCategoryId,
-                onCategorySelected: (id) => setState(() => _selectedCategoryId = id),
+                selectedCategoryId: _searchQuery.isNotEmpty ? null : _selectedCategoryId,
+                onCategorySelected: (id) {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                    _selectedCategoryId = id;
+                  });
+                },
                 onAddCategory: () => showAddCategoryDialog(
                   context,
                   ref,
@@ -62,7 +121,7 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
               ),
               const SizedBox(height: 10),
               Expanded(
-                child: products.isEmpty
+                child: filteredProducts.isEmpty
                     ? ProductsEmptyState(hasCategories: categories.isNotEmpty)
                     : GridView.builder(
                         padding: const EdgeInsets.only(bottom: 100),
@@ -73,9 +132,9 @@ class _ProductsTabState extends ConsumerState<ProductsTab> {
                               crossAxisSpacing: 10,
                               mainAxisSpacing: 10,
                             ),
-                        itemCount: products.length,
+                        itemCount: filteredProducts.length,
                         itemBuilder: (_, i) {
-                          final p = products[i];
+                          final p = filteredProducts[i];
                           final categoryName =
                               categoryNames[p['category_id'] as String?];
                           final stock = (p['stock_qty'] as num?)?.toInt() ?? 0;

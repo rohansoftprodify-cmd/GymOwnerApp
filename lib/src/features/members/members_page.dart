@@ -270,14 +270,14 @@ class _MemberCard extends StatelessWidget {
             borderRadius: BorderRadius.circular(16),
             border: Border.all(color: colorScheme.outlineVariant.withValues(alpha: 0.35)),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 22),
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
           child: Row(
             children: [
               ClipRRect(
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(8),
                 child: Container(
-                  width: 68,
-                  height: 68,
+                  width: 120,
+                  height: 90  ,
                   color: colorScheme.primary.withValues(alpha: 0.15),
                   child: resolvedAvatarUrl != null && resolvedAvatarUrl!.isNotEmpty
                       ? Image.network(

@@ -364,6 +364,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   items: pendingFees,
                   emptyText: 'No pending fees.',
                   mode: FeeListMode.pendingFees,
+                  onRefresh: () => setState(() => _refreshTick++),
                 ),
               ],
               if (upcomingRenewals.isNotEmpty) ...[
@@ -384,6 +385,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                   items: upcomingRenewals,
                   emptyText: 'No renewals due.',
                   mode: FeeListMode.renewals,
+                  onRefresh: () => setState(() => _refreshTick++),
                 ),
               ],
             ],

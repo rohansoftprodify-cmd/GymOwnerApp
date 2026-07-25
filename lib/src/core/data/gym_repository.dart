@@ -467,12 +467,34 @@ class GymRepository {
       run: () => _client
           .from('member_subscriptions')
           .select(
-            'id, member_id, start_date, end_date, payment_status, amount_paid, members(full_name, avatar_url, status), subscription_plans(name, price)',
+            'id, gym_id, member_id, start_date, end_date, payment_status, amount_paid, members(full_name, avatar_url, status), subscription_plans(name, price)',
           )
           .eq('gym_id', gymId)
           .order('created_at', ascending: false),
     );
     return rows.cast<Map<String, dynamic>>();
+  }
+
+  Future<void> updatePaymentStatusAndAmount({
+    required String subscriptionId,
+    required String paymentStatus,
+    required double amountPaid,
+  }) async {
+    await _logApiCall(
+      action: 'member_subscriptions.update_payment',
+      request: {
+        'id': subscriptionId,
+        'payment_status': paymentStatus,
+        'amount_paid': amountPaid,
+      },
+      run: () => _client
+          .from('member_subscriptions')
+          .update({
+            'payment_status': paymentStatus,
+            'amount_paid': amountPaid,
+          })
+          .eq('id', subscriptionId),
+    );
   }
 
   Future<void> upsertCategory({
