@@ -6,6 +6,7 @@ import 'package:gym_owner_app/src/core/theme/app_theme_extensions.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/exclusive_offer_card.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/fee_horizontal_list.dart';
 import 'package:gym_owner_app/src/features/dashboard/widgets/pending_payment_orders_list.dart';
+import 'package:gym_owner_app/src/features/members/member_detail_page.dart';
 import 'package:intl/intl.dart';
 
 void showFeeListSheet(
@@ -89,102 +90,123 @@ void showFeeListSheet(
                         final resolvedAvatarUrl =
                             ref.read(gymRepositoryProvider).memberAvatarUrl(avatarPath);
 
-                        return Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: semantics.cardBackground,
+                        final memberId = item['member_id'] as String?;
+                        final gymId = item['gym_id'] as String?;
+
+                        return Material(
+                          color: Colors.transparent,
+                          child: InkWell(
                             borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: Theme.of(context)
-                                  .colorScheme
-                                  .outlineVariant
-                                  .withValues(alpha: 0.35),
-                            ),
-                          ),
-                          child: Row(
-                            children: [
-                              CircleAvatar(
-                                radius: 20,
-                                backgroundColor: Theme.of(
-                                  context,
-                                ).colorScheme.primaryContainer,
-                                backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
-                                    ? NetworkImage(resolvedAvatarUrl)
-                                    : null,
-                                child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
-                                    ? Text(
-                                        member[0].toUpperCase(),
-                                        style: TextStyle(
-                                          color: Theme.of(
-                                            context,
-                                          ).colorScheme.primary,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 12,
+                            onTap: (memberId == null || gymId == null)
+                                ? null
+                                : () {
+                                    Navigator.of(context).push(
+                                      MaterialPageRoute(
+                                        builder: (_) => MemberDetailPage(
+                                          gymId: gymId,
+                                          memberId: memberId,
                                         ),
-                                      )
-                                    : null,
-                              ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      member,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                        fontSize: 13,
                                       ),
-                                    ),
-                                    Text(
-                                      '$plan • Exp: ${item['end_date'] != null ? DateFormat.yMMMd().format(DateTime.parse(item['end_date'])) : '-'}',
-                                      style: Theme.of(context)
-                                          .textTheme
-                                          .bodySmall
-                                          ?.copyWith(fontSize: 11),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ],
+                                    );
+                                  },
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: semantics.cardBackground,
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: Theme.of(context)
+                                      .colorScheme
+                                      .outlineVariant
+                                      .withValues(alpha: 0.35),
                                 ),
                               ),
-                              Column(
-                                crossAxisAlignment: CrossAxisAlignment.end,
+                              child: Row(
                                 children: [
-                                  if (isRenewals)
-                                    Text(
-                                      daysLabel,
-                                      style: TextStyle(
-                                        color: semantics.accentLime,
-                                        fontWeight: FontWeight.w800,
-                                        fontSize: 12,
-                                      ),
-                                    )
-                                  else ...[
-                                    if (isPending)
-                                      Text(
-                                        '₹${remaining.toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w800,
-                                          fontSize: 13,
-                                        ),
-                                      ),
-                                    Text(
-                                      status,
-                                      style: TextStyle(
-                                        color: isPending
-                                            ? semantics.accentCoral
-                                            : Theme.of(
+                                  CircleAvatar(
+                                    radius: 20,
+                                    backgroundColor: Theme.of(
+                                      context,
+                                    ).colorScheme.primaryContainer,
+                                    backgroundImage: resolvedAvatarUrl != null && resolvedAvatarUrl.isNotEmpty
+                                        ? NetworkImage(resolvedAvatarUrl)
+                                        : null,
+                                    child: resolvedAvatarUrl == null || resolvedAvatarUrl.isEmpty
+                                        ? Text(
+                                            member[0].toUpperCase(),
+                                            style: TextStyle(
+                                              color: Theme.of(
                                                 context,
                                               ).colorScheme.primary,
-                                        fontWeight: FontWeight.w900,
-                                        fontSize: 10,
-                                      ),
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 12,
+                                            ),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          member,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                        Text(
+                                          '$plan • Exp: ${item['end_date'] != null ? DateFormat.yMMMd().format(DateTime.parse(item['end_date'])) : '-'}',
+                                          style: Theme.of(context)
+                                              .textTheme
+                                              .bodySmall
+                                              ?.copyWith(fontSize: 11),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
                                     ),
-                                  ],
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      if (isRenewals)
+                                        Text(
+                                          daysLabel,
+                                          style: TextStyle(
+                                            color: semantics.accentLime,
+                                            fontWeight: FontWeight.w800,
+                                            fontSize: 12,
+                                          ),
+                                        )
+                                      else ...[
+                                        if (isPending)
+                                          Text(
+                                            '₹${remaining.toStringAsFixed(0)}',
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                        Text(
+                                          status,
+                                          style: TextStyle(
+                                            color: isPending
+                                                ? semantics.accentCoral
+                                                : Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
+                                            fontWeight: FontWeight.w900,
+                                            fontSize: 10,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
                                 ],
                               ),
-                            ],
+                            ),
                           ),
                         );
                       },

@@ -262,6 +262,13 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
             subtitle: 'Light, dark & system theme',
             onTap: _scrollToSettings,
           ),
+          ProfileMenuItem(
+            icon: Icons.inventory_2_outlined,
+            title: 'Inventory Value',
+            subtitle: 'Total products and active stock valuation',
+            onTap: () =>
+                context.push('/gym-inventory-value?gymId=${widget.gymId}'),
+          ),
         ],
       ),
     ];
@@ -455,6 +462,11 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
                           const SizedBox(height: 10),
                           const AppearanceSettingsCard(),
                           const SizedBox(height: 12),
+                          InventoryValuationTile(
+                            onTap: () => context.push(
+                                '/gym-inventory-value?gymId=${widget.gymId}'),
+                          ),
+                          const SizedBox(height: 12),
                           DeleteAccountTile(
                             onTap: () => showDeleteAccountDialog(
                               context,
@@ -476,3 +488,72 @@ class _GymProfilePageState extends ConsumerState<GymProfilePage> {
     );
   }
 }
+
+class InventoryValuationTile extends StatelessWidget {
+  const InventoryValuationTile({super.key, required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final semantics = context.appColors;
+    final colorScheme = theme.colorScheme;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(14),
+        child: Ink(
+          decoration: BoxDecoration(
+            color: semantics.cardBackground,
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.inventory_2_outlined,
+                  color: colorScheme.primary,
+                  size: 22,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Inventory Valuation',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Total products and active stock valuation',
+                        style: theme.textTheme.labelSmall?.copyWith(
+                          color: semantics.mutedText,
+                          height: 1.3,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: colorScheme.outline,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+

@@ -371,7 +371,7 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 const SizedBox(height: 4),
                 SectionHeader(
                   title: 'Renewals',
-                  actionLabel: 'Full list',
+                  actionLabel: 'View all',
                   onAction: () => showFeeListSheet(
                     context,
                     ref,
@@ -382,10 +382,19 @@ class _HomeTabState extends ConsumerState<HomeTab> {
                 ),
                 const SizedBox(height: 6),
                 FeeHorizontalList(
-                  items: upcomingRenewals,
+                  items: upcomingRenewals.take(5).toList(),
                   emptyText: 'No renewals due.',
                   mode: FeeListMode.renewals,
                   onRefresh: () => setState(() => _refreshTick++),
+                  onViewAll: upcomingRenewals.length > 5
+                      ? () => showFeeListSheet(
+                            context,
+                            ref,
+                            upcomingRenewals,
+                            'Upcoming Renewals',
+                            mode: FeeListMode.renewals,
+                          )
+                      : null,
                 ),
               ],
             ],

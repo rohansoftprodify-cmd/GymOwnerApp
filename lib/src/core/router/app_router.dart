@@ -15,6 +15,7 @@ import 'package:gym_owner_app/src/features/profile/gym_amenities_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_payment_options_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_check_in_location_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_details_page.dart';
+import 'package:gym_owner_app/src/features/profile/gym_inventory_value_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_page.dart';
 import 'package:gym_owner_app/src/features/profile/gym_profile_section_page.dart';
 import 'package:gym_owner_app/src/features/profile/profile_section.dart';
@@ -111,6 +112,16 @@ final appRouter = GoRouter(
           return const Scaffold(body: Center(child: Text('Missing gym id')));
         }
         return GymPaymentOptionsPage(gymId: gymId);
+      },
+    ),
+    GoRoute(
+      path: '/gym-inventory-value',
+      builder: (_, state) {
+        final gymId = state.uri.queryParameters['gymId'];
+        if (gymId == null || gymId.isEmpty) {
+          return const Scaffold(body: Center(child: Text('Missing gym id')));
+        }
+        return GymInventoryValuePage(gymId: gymId);
       },
     ),
     GoRoute(

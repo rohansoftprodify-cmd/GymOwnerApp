@@ -15,12 +15,14 @@ class FeeHorizontalList extends ConsumerWidget {
     required this.emptyText,
     this.mode = FeeListMode.pendingFees,
     this.onRefresh,
+    this.onViewAll,
   });
 
   final List<Map<String, dynamic>> items;
   final String emptyText;
   final FeeListMode mode;
   final VoidCallback? onRefresh;
+  final VoidCallback? onViewAll;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -59,20 +61,84 @@ class FeeHorizontalList extends ConsumerWidget {
     }
 
     final height = mode == FeeListMode.pendingFees ? 148.0 : 108.0;
+    final showViewAll = onViewAll != null;
 
     return SizedBox(
       height: height,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: items.length,
+        itemCount: items.length + (showViewAll ? 1 : 0),
         separatorBuilder: (_, __) => const SizedBox(width: 12),
         itemBuilder: (_, i) {
+          if (showViewAll && i == items.length) {
+            return _ViewAllCard(onTap: onViewAll!);
+          }
           final item = items[i];
           if (mode == FeeListMode.renewals) {
             return _RenewalCard(item: item, ref: ref, onRefresh: onRefresh);
           }
           return _PendingFeeCard(item: item, ref: ref, onRefresh: onRefresh);
         },
+      ),
+    );
+  }
+}
+
+class _ViewAllCard extends StatelessWidget {
+  const _ViewAllCard({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final colorScheme = theme.colorScheme;
+    final semantics = context.appColors;
+
+    return SizedBox(
+      width: 120,
+      child: Material(
+        color: semantics.cardBackground,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: colorScheme.outlineVariant.withValues(alpha: 0.35),
+              ),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: 0.12),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_rounded,
+                    color: colorScheme.primary,
+                    size: 18,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'View All',
+                  style: theme.textTheme.labelMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: colorScheme.primary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
       ),
     );
   }
