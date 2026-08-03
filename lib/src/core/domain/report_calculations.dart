@@ -11,7 +11,9 @@ int? renewalDaysLeft(String? endDateRaw, {DateTime? now}) {
   final endDate = DateTime.tryParse(endDateRaw);
   if (endDate == null) return null;
   final reference = now ?? DateTime.now();
-  return endDate.difference(reference).inDays.clamp(0, 999);
+  final cleanEndDate = DateTime(endDate.year, endDate.month, endDate.day);
+  final cleanReference = DateTime(reference.year, reference.month, reference.day);
+  return cleanEndDate.difference(cleanReference).inDays.clamp(0, 999);
 }
 
 String renewalDaysLabel(int? daysLeft) {
