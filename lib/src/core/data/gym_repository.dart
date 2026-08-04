@@ -28,6 +28,14 @@ class GymRepository {
     }
   }
 
+  Future<void> autoExpireSubscriptions() async {
+    await _logApiCall(
+      action: 'rpc.auto_expire_subscriptions',
+      request: {},
+      run: () => _client.rpc('auto_expire_subscriptions'),
+    );
+  }
+
   String _stringify(Object? value) {
     if (value == null) return 'null';
     if (value is Map || value is List) {

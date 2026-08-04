@@ -35,9 +35,14 @@ class _HomeTabState extends ConsumerState<HomeTab> {
   int _refreshTick = 0;
   String? _processingOrderId;
 
-  Future<List<dynamic>> _loadHomeData() {
+  Future<List<dynamic>> _loadHomeData() async {
     final repo = ref.read(gymRepositoryProvider);
     final aiRepo = ref.read(aiRepositoryProvider);
+    try {
+      await repo.autoExpireSubscriptions();
+    } catch (e) {
+      debugPrint("Auto expire RPC failed: $e");
+    }
     return Future.wait<dynamic>([
       repo.members(widget.gymId),
       repo.attendance(widget.gymId),
@@ -149,21 +154,32 @@ class _HomeTabState extends ConsumerState<HomeTab> {
         }).toList();
 
         final upcomingRenewals = subscriptions.where((s) {
+          final subscriptionStatus = (s['status'] as String? ?? '').toLowerCase();
+          if (subscriptionStatus != 'active') {
+            return false;
+          }
           final raw = s['end_date'] as String?;
           if (raw == null) return false;
           final endDate = DateTime.tryParse(raw);
           if (endDate == null) return false;
+
+          // Failsafe: if the subscription end date is already in the past, it is expired, not an "upcoming" renewal
+          final cleanEndDate = DateTime(endDate.year, endDate.month, endDate.day);
+          final cleanNow = DateTime(now.year, now.month, now.day);
+          if (cleanEndDate.isBefore(cleanNow)) {
+            return false;
+          }
+
           final mId = s['member_id'] as String?;
           if (mId != null && leftMemberIds.contains(mId)) {
             return false;
           }
           final memberObj = s['members'] as Map<String, dynamic>?;
           final memberStatus = (memberObj?['status'] as String? ?? '').toLowerCase();
-          if (memberStatus == 'left') {
+          if (memberStatus != 'active') {
             return false;
           }
-          return endDate.isAfter(now.subtract(const Duration(days: 1))) &&
-              endDate.isBefore(upcomingCutoff);
+          return endDate.isBefore(upcomingCutoff);
         }).toList()
           ..sort((a, b) => (a['end_date'] as String).compareTo(b['end_date'] as String));
 

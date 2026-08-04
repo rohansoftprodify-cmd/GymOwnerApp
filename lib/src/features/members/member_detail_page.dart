@@ -497,6 +497,12 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                         if (v != 'left') {
                           _leftMessageController.clear();
                         }
+                        // Sync subscription status with member status changes
+                        if (v == 'inactive' || v == 'left') {
+                          _subscriptionStatus = 'expired';
+                        } else if (v == 'active') {
+                          _subscriptionStatus = 'active';
+                        }
                       });
                     }
                   },
@@ -619,7 +625,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                 ),
                 const SizedBox(height: 8),
                 DropdownButtonFormField<String>(
-                  initialValue: _paymentStatus,
+                  value: _paymentStatus,
                   decoration: const InputDecoration(labelText: 'Payment status'),
                   items: const [
                     DropdownMenuItem(value: 'due', child: Text('Due')),
@@ -641,7 +647,7 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                 ),
                 const SizedBox(height: 10),
                 DropdownButtonFormField<String>(
-                  initialValue: _subscriptionStatus,
+                  value: _subscriptionStatus,
                   decoration: const InputDecoration(labelText: 'Subscription status'),
                   items: const [
                     DropdownMenuItem(value: 'active', child: Text('Active')),
@@ -649,7 +655,17 @@ class _MemberDetailPageState extends ConsumerState<MemberDetailPage> {
                     DropdownMenuItem(value: 'cancelled', child: Text('Cancelled')),
                   ],
                   onChanged: (v) {
-                    if (v != null) setState(() => _subscriptionStatus = v);
+                    if (v != null) {
+                      setState(() {
+                        _subscriptionStatus = v;
+                        // Sync member status with subscription status changes
+                        if (v == 'expired' || v == 'cancelled') {
+                          _memberStatus = 'inactive';
+                        } else if (v == 'active') {
+                          _memberStatus = 'active';
+                        }
+                      });
+                    }
                   },
                 ),
                 const SizedBox(height: 20),
